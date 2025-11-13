@@ -1,0 +1,8 @@
+CREATE TABLE artikkelit (
+    id int NOT NULL AUTO_INCREMENT,
+    aika datetime NOT NULL,
+    otsikko varchar(255),
+    sisalto text,
+    kirjoittaja varchar(255),
+    PRIMARY KEY (id)
+);

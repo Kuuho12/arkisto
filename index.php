@@ -194,7 +194,7 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-$sql = "SELECT id, aika, otsikko, sisalto, kirjoittaja FROM artikkelit2
+$sql = "SELECT id, aika, otsikko, sisalto, kirjoittaja FROM artikkelit3
             ORDER BY aika DESC
             LIMIT " . $listaMaara . " OFFSET " . $listaMaara*$sivu-$listaMaara . "";
 $result = $conn->query($sql);
@@ -221,7 +221,9 @@ for($x = 1; $x < count($all_rows) + 1; $x++) {
     $row = $all_rows[$index];
     $uusinOtskko->textContent = $row["otsikko"];
     $uusinAika->nodeValue = $row["aika"];
-    $uusinSisalto->nodeValue = substr($row["sisalto"], 0, 120) . "...";
+    $sisaltoXML = simplexml_load_string($row["sisalto"]);
+    //var_dump($sisaltoXML);
+    $uusinSisalto->nodeValue = substr($sisaltoXML->p[0], 0, 120) . "...";
     $uusinLinkki->nodeValue = "Lue lisää";
     //$linkkiElement->attributes["href"]->value = "http://localhost/blogitehtava/artikkeli.php?q=" . (string) $row["id"] . '&index=' . $index . '';
     $uusinLinkki->setAttribute(
@@ -243,7 +245,7 @@ for($x = 1; $x < count($all_rows) + 1; $x++) {
 /*while ($row = $result->fetch_assoc()) {
     //echo $row["otsikko"] . " " . $row["aika"] . "<br>" . substr($row["sisalto"], 0, 120) . "...<br>" . "<a href='http://localhost/blogitehtava/artikkeli.php?q=" . (string) $row["id"] . "'>Lue lisää</a>" . "<br>";
 }*/
-$sql = "SELECT COUNT(*) FROM artikkelit2";
+$sql = "SELECT COUNT(*) FROM artikkelit3";
 $result = $conn->query($sql);
 $taulunPituus = mysqli_fetch_all($result, MYSQLI_ASSOC)[0]['COUNT(*)'];
 $y = 0;

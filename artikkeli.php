@@ -33,7 +33,7 @@ $html_string = '<!DOCTYPE html>
     <div id="artikkeli">
         <h1 id="otsikko"></h1>
         <p id="aika"></p>
-        <p id="sisalto"></p>
+        <div id="sisalto"></div>
         <p id="kirjoittaja"></p>
     </div>
     <div id="uusimmat">
@@ -132,19 +132,38 @@ $conn = new mysqli($servername, $username, $password, $dbname);
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
-$sql = "SELECT aika, otsikko, sisalto, kirjoittaja FROM artikkelit2
+$sql = "SELECT aika, otsikko, sisalto, kirjoittaja FROM artikkelit3
     WHERE id='" . $id . "'";
 $result = $conn->query($sql);
 //var_dump($result);
-while ($row = $result->fetch_assoc()) { 
+$row = $result->fetch_assoc();
     $newDate = date_create($row["aika"]);
     $otsikkoElement->nodeValue = $row["otsikko"];
     $aikaElement->nodeValue = (string) $newDate->format('Y-m-d H:i');
-    $sisaltoElement->textContent = $row["sisalto"];
     $kirjoittajaElement->nodeValue = $row["kirjoittaja"];
-}
 
-$sql = "SELECT id, aika, otsikko, sisalto, kirjoittaja FROM artikkelit2
+    $temp_dom = new DOMDocument('1.0', 'utf-8');
+    
+    libxml_use_internal_errors(true);
+    
+    if (!$temp_dom->loadXML('<root>' . $row["sisalto"] . '</root>')) {
+        libxml_clear_errors();
+        return false;
+    }
+
+    $temp_root = $temp_dom->getElementsByTagName('root')->item(0);
+
+    $nodes_to_append = [];
+    foreach ($temp_root->childNodes as $node) {
+        $nodes_to_append[] = $node;
+    }
+    foreach ($nodes_to_append as $node) {
+        $imported_node = $dom->importNode($node, true); 
+        $sisaltoElement->appendChild($imported_node);
+    }
+
+
+$sql = "SELECT id, aika, otsikko, sisalto, kirjoittaja FROM artikkelit3
     WHERE id!= " . $id . "
     ORDER BY aika DESC
     LIMIT " . $listaMaara . " OFFSET " . $listaMaara*$sivu-$listaMaara . "";
@@ -173,7 +192,8 @@ for($x = 1; $x < count($all_rows) + 1; $x++) {
     $uusinOtskko->textContent = $row["otsikko"];
     $newDate = date_create($row["aika"]);
     $uusinAika->nodeValue = (string) $newDate->format('Y-m-d H:i');
-    $uusinSisalto->nodeValue = substr($row["sisalto"], 0, 120) . "...";
+    $sisaltoXML = simplexml_load_string($row["sisalto"]);
+    $uusinSisalto->nodeValue = substr($sisaltoXML->p[0], 0, 120) . "...";
     $uusinLinkki->nodeValue = "Lue lisää";
     $uusinLinkki->setAttribute(
     'href',
@@ -196,7 +216,7 @@ for($x = 1; $x < count($all_rows) + 1; $x++) {
     );*/
     //$uusimmatElement->textContent = $row["otsikko"] . " " . $row["aika"] . "<br>" . substr($row["sisalto"], 0, 120) . "...<br>" . "<a href='http://localhost/blogitehtava/artikkeli.php?q=" . (string) $row["id"] . "'>Lue lisää</a>" . "<br>";
 }
-$sql = "SELECT COUNT(*) FROM artikkelit2";
+$sql = "SELECT COUNT(*) FROM artikkelit3";
 $result = $conn->query($sql);
 $taulunPituus = mysqli_fetch_all($result, MYSQLI_ASSOC)[0]['COUNT(*)'];
 $y = 0;

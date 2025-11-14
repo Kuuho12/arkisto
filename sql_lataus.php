@@ -16,13 +16,21 @@ $username = "esimerkki";
 $password = "ikkremise";
 $dbname = "localhost";
 
-$url = 'https://harto.wordpress.com/page/11/';
+$url = 'https://harto.wordpress.com/page/4/';
 $html_content = @file_get_contents($url);
 $dom = new DOMDocument();
 @$dom->loadHTML($html_content);
 
 $xpath = new DOMXPath($dom);
 $nodeArticles = $xpath->query("//article");
+$nodeEntryContent = $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " entry-content ")]');
+$extracted_content_string = [];
+//var_dump($nodeEntryContent[0]);
+for($x = 0; $x < $nodeEntryContent->length; $x++) {
+    $target_div = $nodeEntryContent->item($x);
+    $extracted_content_string[] = $dom->saveXML($target_div);
+}
+//echo $extracted_content_string[0];
 
 if($nodeArticles->length > 0) {
     //var_dump($nodeArticles[0]);
@@ -37,7 +45,7 @@ if($nodeArticles->length > 0) {
     var_dump($nodeAuthor);
     print $nodeOtsikko[0]->nodeValue;
     var_dump($nodeDate[0]);*/
-    var_dump($nodeSisalto[0]);
+    //var_dump($nodeSisalto[0]);
     $newDate = date_create($nodeDate[0]->value);
     var_dump($newDate->format('Y-m-d H:i:s'));
     for($x = 0; $x < $nodeArticles->length; $x++) {
@@ -51,14 +59,14 @@ if($nodeArticles->length > 0) {
     }
     echo "Connected successfully";
     echo "<br>";
-    /*for($x = 0; $x < 10; $x++) {
+    /*for($x = 0; $x < 3; $x++) {
         $date = date_create($nodeDate[$x]->value);
         $dateString = $date->format('Y-m-d H:i:s');
         echo $dateString;
         $otsikko = $nodeOtsikko[$x]->nodeValue;
-        $artikkeli = $nodeSisalto[$x]->nodeValue;
+        $artikkeli = $extracted_content_string[$x];
         $kirjoittaja = $nodeAuthor[$x]->nodeValue;
-        $sql = "INSERT INTO artikkelit2 (aika, otsikko, sisalto, kirjoittaja)
+        $sql = "INSERT INTO artikkelit3 (aika, otsikko, sisalto, kirjoittaja)
         VALUES ('$dateString', '$otsikko', '$artikkeli', '$kirjoittaja')"; 
         if ($conn->query($sql) === TRUE) {
             echo "New record created successfully";

@@ -19,6 +19,7 @@
 </html>-->
 
 <?php
+require 'model.php';
 $html_string = '<!DOCTYPE html>
 <html lang="fi">
 
@@ -26,7 +27,7 @@ $html_string = '<!DOCTYPE html>
     <meta charset="ISO-8859-1">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="index.css">
-    <title>Document</title>
+    <title>Artikkeli</title>
 </head>
 
 <body>
@@ -37,66 +38,6 @@ $html_string = '<!DOCTYPE html>
         <p id="kirjoittaja"></p>
     </div>
     <div id="uusimmat">
-            <div id="uusin1">
-                <p id="uusin1otsikko"></p>
-                <p id="uusin1aika"></p>
-                <p id="uusin1sisalto"></p>
-                <a id="uusin1linkki" href=""></a>
-            </div>
-            <div id="uusin2">
-                <p id="uusin2otsikko"></p>
-                <p id="uusin2aika"></p>
-                <p id="uusin2sisalto"></p>
-                <a id="uusin2linkki" href=""></a>
-            </div>
-            <div id="uusin3">
-                <p id="uusin3otsikko"></p>
-                <p id="uusin3aika"></p>
-                <p id="uusin3sisalto"></p>
-                <a id="uusin3linkki" href=""></a>
-            </div>
-            <div id="uusin4">
-                <p id="uusin4otsikko"></p>
-                <p id="uusin4aika"></p>
-                <p id="uusin4sisalto"></p>
-                <a id="uusin4linkki" href=""></a>
-            </div>
-            <div id="uusin5">
-                <p id="uusin5otsikko"></p>
-                <p id="uusin5aika"></p>
-                <p id="uusin5sisalto"></p>
-                <a id="uusin5linkki" href=""></a>
-            </div>
-            <div id="uusin6">
-                <p id="uusin6otsikko"></p>
-                <p id="uusin6aika"></p>
-                <p id="uusin6sisalto"></p>
-                <a id="uusin6linkki" href=""></a>
-            </div>
-            <div id="uusin7">
-                <p id="uusin7otsikko"></p>
-                <p id="uusin7aika"></p>
-                <p id="uusin7sisalto"></p>
-                <a id="uusin7linkki" href=""></a>
-            </div>
-            <div id="uusin8">
-                <p id="uusin8otsikko"></p>
-                <p id="uusin8aika"></p>
-                <p id="uusin8sisalto"></p>
-                <a id="uusin8linkki" href=""></a>
-            </div>
-            <div id="uusin9">
-                <p id="uusin9otsikko"></p>
-                <p id="uusin9aika"></p>
-                <p id="uusin9sisalto"></p>
-                <a id="uusin9linkki" href=""></a>
-            </div>
-            <div id="uusin10">
-                <p id="uusin10otsikko"></p>
-                <p id="uusin10aika"></p>
-                <p id="uusin10sisalto"></p>
-                <a id="uusin10linkki" href=""></a>
-            </div>
         </div>
         <div id="linkit">
     </div>
@@ -105,20 +46,22 @@ $html_string = '<!DOCTYPE html>
 </html>';
 $dom = new DOMDocument();
 @$dom->loadHTML($html_string);
-$otsikkoElement = $dom->getElementById("otsikko");
+/*$otsikkoElement = $dom->getElementById("otsikko");
 $aikaElement = $dom->getElementById("aika");
 $sisaltoElement = $dom->getElementById("sisalto");
 $kirjoittajaElement = $dom->getElementById("kirjoittaja");
 $uusimmatElement =$dom->getElementById("uusimmat");
-$linkitElement = $dom->getElementById("linkit");
+$linkitElement = $dom->getElementById("linkit");*/
 $listaMaara = 10;
 
 $servername = "localhost";
 $username = "esimerkki";
 $password = "ikkremise";
 $dbname = "localhost";
+$tablename = "artikkelit3";
 
-//echo $_SERVER['REQUEST_URI'];
+$sqlModel = new SQLModel($servername, $username, $password, $dbname, $tablename);
+
 $queryString = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
 $params = [];
 parse_str($queryString, $params);
@@ -128,16 +71,21 @@ if(preg_match('/\bsivu\b/', $queryString)) {
 $sivu = (int) $params['sivu'];
 }
 
-$conn = new mysqli($servername, $username, $password, $dbname);
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-$sql = "SELECT aika, otsikko, sisalto, kirjoittaja FROM artikkelit3
-    WHERE id='" . $id . "'";
-$result = $conn->query($sql);
-//var_dump($result);
-$row = $result->fetch_assoc();
-    $newDate = date_create($row["aika"]);
+require_once 'view.php';
+$view = new View($dom);
+
+$row = $sqlModel->haeArtikkeliIdlla($id);
+$view->tulostaArtikkeli($row);
+
+$all_rows = $sqlModel->haeListatus($listaMaara, $sivu);
+$view->tulostaListaus($sivu, $all_rows);
+
+$taulunPituus = $sqlModel->haeCount();
+$url = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$view->tulostaLinkit($url, $taulunPituus, $listaMaara, $sivu, $id);
+
+$view->tulostaDom();
+/*    $newDate = date_create($row["aika"]);
     $otsikkoElement->nodeValue = $row["otsikko"];
     $aikaElement->nodeValue = (string) $newDate->format('Y-m-d H:i');
     $kirjoittajaElement->nodeValue = $row["kirjoittaja"];
@@ -161,15 +109,8 @@ $row = $result->fetch_assoc();
         $imported_node = $dom->importNode($node, true); 
         $sisaltoElement->appendChild($imported_node);
     }
-
-
-$sql = "SELECT id, aika, otsikko, sisalto, kirjoittaja FROM artikkelit3
-    WHERE id!= " . $id . "
-    ORDER BY aika DESC
-    LIMIT " . $listaMaara . " OFFSET " . $listaMaara*$sivu-$listaMaara . "";
-    //LIMIT " . (string) 10*$sivu . "";
-$result2 = $conn->query($sql);
-$all_rows = mysqli_fetch_all($result2, MYSQLI_ASSOC);
+*/
+/*
 for($x = 1; $x < count($all_rows) + 1; $x++) {
     $uusinDiv = $dom->createElement('div');
     $uusinDiv->setAttribute("id", "uusin$x");
@@ -199,26 +140,9 @@ for($x = 1; $x < count($all_rows) + 1; $x++) {
     'href',
     'http://localhost/blogitehtava/artikkeli.php?' . http_build_query(['id' => (string)$row['id'], 'sivu' => $sivu])
     );
-    /*$index = $x-1;
-    $row = $all_rows[$index];
-    $otsikkoElement =$dom->getElementById("uusin" . $x . "otsikko");
-    $aikaElement =$dom->getElementById("uusin" . $x . "aika");
-    $sisaltoElement =$dom->getElementById("uusin" . $x . "sisalto");
-    $linkkiElement =$dom->getElementById("uusin" . $x . "linkki");
-    $otsikkoElement->textContent = $row["otsikko"];
-    $newDate = date_create($row["aika"]);
-    $aikaElement->nodeValue = (string) $newDate->format('Y-m-d H:i');
-    $sisaltoElement->nodeValue = substr($row["sisalto"], 0, 120) . "...";
-    $linkkiElement->nodeValue = "Lue lisää";
-    $linkkiElement->setAttribute(
-    'href',
-    'http://localhost/blogitehtava/artikkeli.php?' . http_build_query(['id' => (string)$row['id'], 'sivu' => $sivu])
-    );*/
-    //$uusimmatElement->textContent = $row["otsikko"] . " " . $row["aika"] . "<br>" . substr($row["sisalto"], 0, 120) . "...<br>" . "<a href='http://localhost/blogitehtava/artikkeli.php?q=" . (string) $row["id"] . "'>Lue lisää</a>" . "<br>";
-}
-$sql = "SELECT COUNT(*) FROM artikkelit3";
-$result = $conn->query($sql);
-$taulunPituus = mysqli_fetch_all($result, MYSQLI_ASSOC)[0]['COUNT(*)'];
+}*/
+
+/*
 $y = 0;
 for($x = $taulunPituus; $x > 0; $x-=$listaMaara) {
     $y++;
@@ -234,14 +158,5 @@ for($x = $taulunPituus; $x > 0; $x-=$listaMaara) {
 $nykyinenLinkki = $dom->getElementById("linkki" . $sivu);
 $nykyinenLinkki->removeAttribute("href");
 $nykyinenLinkki->className = "bold";
-/*for($x = 1; $x < 11; $x++) { 
-    if(!($x == $sivu)) {
-    $linkkiElement =$dom->getElementById("linkki" . $x);
-    $linkkiElement->setAttribute(
-        'href',
-        'http://localhost/blogitehtava/artikkeli.php?' . http_build_query(['id' => $id, 'sivu' => $x])
-    );
-}
-}*/
-echo $dom->saveHTML();
+*/
 ?>

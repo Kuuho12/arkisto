@@ -25,15 +25,12 @@ $xpath = new DOMXPath($dom);
 $nodeArticles = $xpath->query("//article");
 $nodeEntryContent = $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " entry-content ")]');
 $extracted_content_string = [];
-//var_dump($nodeEntryContent[0]);
 for($x = 0; $x < $nodeEntryContent->length; $x++) {
     $target_div = $nodeEntryContent->item($x);
     $extracted_content_string[] = $dom->saveXML($target_div);
 }
-//echo $extracted_content_string[0];
 
 if($nodeArticles->length > 0) {
-    //var_dump($nodeArticles[0]);
     foreach ($nodeArticles AS $article) {
         $nodeAuthor = $xpath->query("//a[@rel='author']", $article);
         $nodeOtsikko = $xpath->query("//*[@class='entry-title']/a[@rel='bookmark']", $article);
@@ -41,11 +38,6 @@ if($nodeArticles->length > 0) {
         $nodeBookmarks = $xpath->query("//a[@rel='bookmark']", $article);
         $nodeSisalto = $xpath->query("//div[@class='entry-content']", $article);
     }
-    /*var_dump($nodeArticles[4]->nodeValue);
-    var_dump($nodeAuthor);
-    print $nodeOtsikko[0]->nodeValue;
-    var_dump($nodeDate[0]);*/
-    //var_dump($nodeSisalto[0]);
     $newDate = date_create($nodeDate[0]->value);
     var_dump($newDate->format('Y-m-d H:i:s'));
     for($x = 0; $x < $nodeArticles->length; $x++) {
@@ -59,7 +51,7 @@ if($nodeArticles->length > 0) {
     }
     echo "Connected successfully";
     echo "<br>";
-    /*for($x = 0; $x < 3; $x++) {
+    /*for($x = 0; $x < 10; $x++) { // Datan lataus tietokantaan
         $date = date_create($nodeDate[$x]->value);
         $dateString = $date->format('Y-m-d H:i:s');
         echo $dateString;

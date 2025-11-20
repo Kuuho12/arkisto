@@ -21,7 +21,7 @@ class View
         $temp_dom = new DOMDocument('1.0', 'utf-8');
 
         libxml_use_internal_errors(true);
-
+        
         if (!$temp_dom->loadXML('<root>' . $row["sisalto"] . '</root>')) {
             libxml_clear_errors();
             return false;

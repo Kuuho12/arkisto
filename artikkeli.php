@@ -4,28 +4,6 @@
 <head>
     <meta charset="ISO-8859-1">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-
-<body>
-    <div>
-        <h1 id="otsikko"></h1>
-        <p id="aika"></p>
-        <p id="sisalto"></p>
-        <p id="kirjoittaja"></p>
-    </div>
-</body>
-
-</html>-->
-
-<?php
-require 'model.php';
-$html_string = '<!DOCTYPE html>
-<html lang="fi">
-
-<head>
-    <meta charset="ISO-8859-1">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="index.css">
     <title>Artikkeli</title>
 </head>
@@ -43,15 +21,10 @@ $html_string = '<!DOCTYPE html>
     </div>
 </body>
 
-</html>';
-$dom = new DOMDocument();
-@$dom->loadHTML($html_string);
-/*$otsikkoElement = $dom->getElementById("otsikko");
-$aikaElement = $dom->getElementById("aika");
-$sisaltoElement = $dom->getElementById("sisalto");
-$kirjoittajaElement = $dom->getElementById("kirjoittaja");
-$uusimmatElement =$dom->getElementById("uusimmat");
-$linkitElement = $dom->getElementById("linkit");*/
+</html>-->
+
+<?php
+require 'model.php';
 $listaMaara = 10;
 
 $servername = "localhost";
@@ -71,7 +44,56 @@ if(preg_match('/\bsivu\b/', $queryString)) {
 $sivu = (int) $params['sivu'];
 }
 
-require_once 'view.php';
+$row = $sqlModel->haeArtikkeliIdlla($id);
+ob_start();
+require_once 'views/tulostaArtikkeli.php'; 
+$artikkeli = ob_get_clean();
+
+$all_rows = $sqlModel->haeListatus($listaMaara, $sivu);
+ob_start();
+require_once 'views/tulostaListatus.php';
+$listaus = ob_get_clean();
+
+$taulunPituus = $sqlModel->haeCount();
+$url = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+ob_start();
+require_once 'views/tulostaLinkit.php';
+$linkit = ob_get_clean();
+
+$html_string = '<!DOCTYPE html>
+<html lang="fi">
+
+<head>
+    <meta charset="ISO-8859-1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="index.css">
+    <title>Artikkeli</title>
+</head>
+
+<body>
+    <div id="artikkeli"> ' . $artikkeli . '
+    </div>
+    <div id="uusimmat"> ' . $listaus . '
+        </div>
+        <div id="linkit"> '. $linkit . '
+    </div>
+</body>
+
+</html>';
+/*$dom = new DOMDocument();
+@$dom->loadHTML($html_string);*/
+$dom = new DOMDocument();
+@$html_for_dom = mb_convert_encoding($html_string, 'HTML-ENTITIES', 'UTF-8');
+@$dom->loadHTML($html_for_dom);
+echo $dom->saveHTML();
+/*$otsikkoElement = $dom->getElementById("otsikko");
+$aikaElement = $dom->getElementById("aika");
+$sisaltoElement = $dom->getElementById("sisalto");
+$kirjoittajaElement = $dom->getElementById("kirjoittaja");
+$uusimmatElement =$dom->getElementById("uusimmat");
+$linkitElement = $dom->getElementById("linkit");*/
+
+/*require_once 'view.php';
 $view = new View($dom);
 
 $row = $sqlModel->haeArtikkeliIdlla($id);
@@ -84,7 +106,7 @@ $taulunPituus = $sqlModel->haeCount();
 $url = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $view->tulostaLinkit($url, $taulunPituus, $listaMaara, $sivu, $id);
 
-$view->tulostaDom();
+$view->tulostaDom();*/
 /*    $newDate = date_create($row["aika"]);
     $otsikkoElement->nodeValue = $row["otsikko"];
     $aikaElement->nodeValue = (string) $newDate->format('Y-m-d H:i');

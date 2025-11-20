@@ -90,6 +90,39 @@
 </html>-->
 <?php
 require_once 'model.php';
+$listaMaara = 10;
+
+$queryString = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
+$params = [];
+$sivu = 1;
+if($queryString) {
+parse_str($queryString, $params);
+$sivu = (int) $params['sivu'];
+}
+$id = null;
+
+$servername = "localhost";
+$username = "esimerkki";
+$password = "ikkremise";
+$dbname = "localhost";
+$tablename = "artikkelit3";
+
+$sqlModel = new SQLModel($servername, $username, $password, $dbname, $tablename);
+
+$taulunPituus = $sqlModel->haeCount();
+$url = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+ob_start();
+require_once 'views/tulostaLinkit.php';
+$linkit = ob_get_clean();
+
+$all_rows = $sqlModel->haeListatus($listaMaara, $sivu);
+ob_start();
+require_once 'views/tulostaListatus.php';
+$listaus = ob_get_clean();
+
+// $linkit = tulostaLinkit($url, $taulunPituus, $listaMaara, $sivu, null);*/
+
 $html_string = '<!DOCTYPE html>
 <html lang="fi">
 
@@ -102,48 +135,33 @@ $html_string = '<!DOCTYPE html>
 
 <body>
     <div>
-        <div id="uusimmat">
+        <div id="uusimmat"> ' . $listaus . '
         </div>
     </div>
-    <div id="linkit">
+    <div id="linkit"> '. $linkit . '
     </div>
 </body>
 
 </html>';
+/*$dom = new DOMDocument();
+@$dom->loadHTML($html_string);*/
 $dom = new DOMDocument();
-@$dom->loadHTML($html_string);
-$uusimmatElement =$dom->getElementById("uusimmat");
-$linkitElement = $dom->getElementById("linkit");
-$listaMaara = 10;
+@$html_for_dom = mb_convert_encoding($html_string, 'HTML-ENTITIES', 'UTF-8');
+@$dom->loadHTML($html_for_dom);
+echo $dom->saveHTML();
+//$uusimmatElement =$dom->getElementById("uusimmat");
+//$linkitElement = $dom->getElementById("linkit");
+//$linkitElement->append($linkit);
 
-$queryString = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
-$params = [];
-$sivu = 1;
-if($queryString) {
-parse_str($queryString, $params);
-$sivu = (int) $params['sivu'];
-}
 
-$servername = "localhost";
-$username = "esimerkki";
-$password = "ikkremise";
-$dbname = "localhost";
-$tablename = "artikkelit3";
+//require_once 'view.php';
+//$view = new View($dom);
 
-$sqlModel = new SQLModel($servername, $username, $password, $dbname, $tablename);
+//$view->tulostaListaus($sivu, $all_rows);
 
-$all_rows = $sqlModel->haeListatus($listaMaara, $sivu);
+//$view->tulostaLinkit($url, $taulunPituus, $listaMaara, $sivu, null);
 
-require_once 'view.php';
-$view = new View($dom);
-
-$view->tulostaListaus($sivu, $all_rows);
-
-$taulunPituus = $sqlModel->haeCount();
-$url = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$view->tulostaLinkit($url, $taulunPituus, $listaMaara, $sivu, null);
-
-$view->tulostaDom();
+//$view->tulostaDom();
 /*
 for($x = 1; $x < count($all_rows) + 1; $x++) {
     $uusinDiv = $dom->createElement('div');

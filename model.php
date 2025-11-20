@@ -1,4 +1,9 @@
 <?php
+class Viewtulostukset {
+    function tulostaLinkit($taulunPituus, $listaMaara) {
+
+    }
+}
 class SQLModel {
     public $servername;
     public $username;

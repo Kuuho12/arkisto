@@ -24,7 +24,7 @@ $tulostukset = tulostaListausJaLinkit($all_rows, $taulunPituus, $listaMaara, $ur
 $listaus = $tulostukset['listaus'];
 $linkit = $tulostukset['linkit'];
 
-$html_string = '<!DOCTYPE html>
+/*$html_string = '<!DOCTYPE html>
 <html lang="fi">
 
 <head>
@@ -43,6 +43,72 @@ $html_string = '<!DOCTYPE html>
     </div>
 </body>
 
+</html>';*/
+$html_string = '
+<!DOCTYPE HTML>
+<!--
+	Future Imperfect by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>Artikkeli</title>
+		<meta charset="ISO-8859-1" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+        <link rel="stylesheet" href="index.css">
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+					<header id="header">
+						<h1><a href="index.php">Arkisto</a></h1>
+					</header>
+
+				<!-- Main -->
+					<div id="main">
+
+                            ' . $artikkeli . '
+
+					</div>
+
+				<!-- Sidebar -->
+					<section id="sidebar">
+
+						<!-- Intro -->
+							<!--<section id="intro">
+								<header>
+									<h2>Arkisto</h2>
+                                    <p>Lisää luettavaa:</p>
+								</header>
+							</section>-->
+
+						<!-- Posts List -->
+							<section>
+								<ul class="posts">
+                                    ' . $listaus . '
+								</ul>
+							</section>
+                            
+                            <section class="blurb" id="linkit">
+                            ' . $linkit . '
+							</section>
+					</section>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+	</body>
 </html>';
 $dom = new DOMDocument();
 @$html_for_dom = mb_convert_encoding($html_string, 'HTML-ENTITIES', 'UTF-8');

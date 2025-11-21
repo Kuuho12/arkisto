@@ -7,7 +7,7 @@
 function tulostaArtikkeli($row)
 {
     ob_start();
-    require_once 'views/tulostaArtikkeli.php';
+    require_once 'newViews/tulostaArtikkeli.php';
     return ob_get_clean();
 }
 /**
@@ -22,10 +22,10 @@ function tulostaArtikkeli($row)
  */
 function tulostaListausJaLinkit ($all_rows, $taulunPituus, $listaMaara, $url, $sivu, $id) {
     ob_start();
-    require_once 'views/tulostaListatus.php';
+    require_once 'newViews/tulostaListatus.php';
     $listaus = ob_get_clean();
     ob_start();
-    require_once 'views/tulostaLinkit.php';
+    require_once 'newViews/tulostaLinkit.php';
     $linkit = ob_get_clean();
     return ['listaus' => $listaus, 'linkit' => $linkit];
 }

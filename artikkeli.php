@@ -44,7 +44,7 @@ $linkit = $tulostukset['linkit'];
 </body>
 
 </html>';*/
-$html_string = '
+/*$html_string = '
 <!DOCTYPE HTML>
 <!--
 	Future Imperfect by HTML5 UP
@@ -89,7 +89,7 @@ $html_string = '
 
 						<!-- Posts List -->
 							<section>
-								<ul class="posts">
+								<ul class="posts">[LISTAUS]
                                     ' . $listaus . '
 								</ul>
 							</section>
@@ -109,9 +109,12 @@ $html_string = '
 			<script src="assets/js/main.js"></script>
 
 	</body>
-</html>';
+</html>'*/;
 $dom = new DOMDocument();
-@$html_for_dom = mb_convert_encoding($html_string, 'HTML-ENTITIES', 'UTF-8');
+@$html_file = file_get_contents('template/template.html');
+$replace_strings = ['[ARTIKKELI]', '[LISTAUS]', '[LINKIT]'];
+$html_file = str_replace($replace_strings, [$artikkeli, $listaus, $linkit], $html_file);
+@$html_for_dom = mb_convert_encoding($html_file, 'HTML-ENTITIES', 'UTF-8');
 @$dom->loadHTML($html_for_dom);
 echo $dom->saveHTML();
 ?>

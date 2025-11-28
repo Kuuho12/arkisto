@@ -17,9 +17,31 @@ function TiivistelmanLuonti($row, $id)
         fclose($file);
         return $tiivistelma;
     } catch (\Exception $e) {
-       return "Tekoälytiivistelmää ei voida luoda tällä hetkellä. Error: " . $e->getMessage();
+        return "Tekoälytiivistelmää ei voida luoda tällä hetkellä. Error: " . $e->getMessage();
     }
 }
+function Hakukoneoptimointi($row, $id)
+{
+    $GeminiApiKey = getenv('GEMINI_API_KEY');
+
+    $client = Gemini::client($GeminiApiKey);
+    $prompt = $row["otsikko"] . "\n" . $row["sisalto"] . "\n\n" . "Anna lista ehdotuksia hakukoneoptimointiin yllä olevasta artikkelista suomeksi.";
+    $model = 'gemini-2.5-flash';
+
+    try {
+        $result = $client
+            ->generativeModel(model: $model)
+            ->generateContent($prompt);
+        $optimointi = $result->text();
+        $file = fopen('temp_ai/optimization_' . $id . '.txt', 'w');
+        fwrite($file, $optimointi);
+        fclose($file);
+        return $optimointi;
+    } catch (\Exception $e) {
+        return "Hakukoneille optimointiehdotuksien luonti epäonnistui. Error: " . $e->getMessage();
+    }
+}
+
 
 if (!file_exists('temp_ai')) {
     mkdir('temp_ai');
@@ -28,6 +50,14 @@ $queryString = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
 $params = [];
 parse_str($queryString, $params);
 $id = $params['id'];
+if (file_exists('temp_ai/optimization_' . $id . '.txt')) {
+    $file = fopen('temp_ai/optimization_' . $id . '.txt', 'r');
+    $optimointi = fread($file, filesize('temp_ai/optimization_' . $id . '.txt'));
+    fclose($file);
+} else {
+    $optimointi = Hakukoneoptimointi($row, $id);
+}
+
 if (isset($_POST['reload_tiivistelma'])) {
     $tiivistelma = TiivistelmanLuonti($row, $id);
 } else {
@@ -58,6 +88,9 @@ if (isset($_POST['reload_tiivistelma'])) {
         <button type="submit" name="reload_tiivistelma" value="">Lataa tekoälytiivistelmä uudestaan</button>
     </form>
     <?php echo $row["sisalto"]; ?>
+    <p id="ai_hakukoneoptimointi">
+        <?php echo "<strong>Hakukoneoptimointiehdotukset:</strong> <pre>" . htmlspecialchars($optimointi). "</pre>";?>
+    </p>
 </article>
 
 <?php /*

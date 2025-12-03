@@ -1,0 +1,45 @@
+.title h2 {
+    text-align: center ;
+}
+.bold {
+    font-weight: bold;
+}
+#linkit a {
+    padding: 3px;
+    font-size: 20px;
+}
+article {
+    padding-bottom: 20px;
+}
+.article-rivi {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+}
+.article-rivi > * {
+    height: fit-content;
+    margin-left: 10px;
+    margin-right: 10px;
+    margin-bottom: 0 !important;
+}
+.buttonlink {
+    text-decoration: none !important;
+    text-decoration-line: overline;
+}
+#postmain {
+    margin-top: 50px;
+    margin-bottom: 65px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+#postmain > * {
+    margin-top: auto;
+    margin-bottom: auto;
+    margin-left: 10px;
+    margin-right: 10px;
+    font-size: 24px;
+}
+.listausotsikko {
+    margin-bottom: 35px;
+}

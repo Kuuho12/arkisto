@@ -29,6 +29,31 @@ function tulostaListausJaLinkit ($all_rows, $taulunPituus, $listaMaara, $url, $s
     $linkit = ob_get_clean();
     return ['listaus' => $listaus, 'linkit' => $linkit];
 }
+function tulostaHallintaListaus ($all_rows, $taulunPituus, $listaMaara, $sivu) {
+    ob_start();
+    require_once 'newViews/tulostaHallintaListaus.php';
+    return ob_get_clean();
+}
+function tulostaLinkit ($taulunPituus, $listaMaara, $url, $sivu, $id) {
+    ob_start();
+    require_once 'newViews/tulostaLinkit.php';
+    return ob_get_clean();
+}
+function tulostaInformaatio($taulunPituus, $taulunInformaatio, $taulunMerkisto) {
+    ob_start();
+    require_once 'newViews/tulostaInformaatio.php';
+    return ob_get_clean();
+}
+function tulostaMuokkausArtikkeli($row, $id, $result) {
+    ob_start();
+    require_once 'newViews/tulostaMuokkausArtikkeli.php';
+    return ob_get_clean();
+}
+function tulostaLisaysArtikkeli($result) {
+    ob_start();
+    require_once 'newViews/tulostaLisaysArtikkeli.php';
+    return ob_get_clean();
+}
 /**
  * Käytetään datan hakuun tietokannasta
  * 
@@ -45,6 +70,7 @@ class SQLHaku
     public $password = "ikkremise";
     public $dbname = "localhost";
     public $tablename = "artikkelit3";
+    public $backuptablename = "artikkelit4";
     public $conn;
     function __construct()
     {
@@ -85,6 +111,13 @@ class SQLHaku
         }
         return $artikkelit;
     }
+    function lisaaArtikkeli($aika, $otsikko, $sisalto, $kirjoittaja) {
+        $sql = "INSERT INTO $this->tablename (aika, otsikko, sisalto, kirjoittaja) VALUES ('$aika', '$otsikko', '$sisalto', '$kirjoittaja')";
+        $result = $this->conn->query($sql);
+        $sql2 = "INSERT INTO $this->backuptablename (aika, otsikko, sisalto, kirjoittaja) VALUES ('$aika', '$otsikko', '$sisalto', '$kirjoittaja')";
+        $result2 = $this->conn->query($sql2);
+        return [$result, $result2];
+    }
     /**
      * Hakee artikkelien kokonaismäärän
      */
@@ -97,6 +130,49 @@ class SQLHaku
             return intval($row['count']);
         } else {
             return 0;
+        }
+    }
+    function haeTaulunMerkisto() {
+        $sql = "SHOW TABLE STATUS LIKE '$this->tablename'";
+        $result = $this->conn->query($sql);
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            return $row['Collation'];
+        } else {
+            return "Tuntematon merkistö";
+        }
+    }
+    function haeTaulunInformaatio() {
+        $sql = "DESCRIBE $this->tablename";
+        return $this->conn->query($sql);
+    }
+    function muokkaaTaulua($id, $aika, $otsikko, $sisalto, $kirjoittaja) {
+        $sql = "UPDATE $this->tablename SET aika = '$aika', otsikko = '$otsikko', sisalto = '$sisalto', kirjoittaja = '$kirjoittaja' WHERE id = " . intval($id);
+        $result = $this->conn->query($sql);
+        return $result;
+    }
+    function haeBackUpArtikkeli($id) {
+        $sql = "SELECT * FROM $this->backuptablename WHERE id = " . intval($id);
+        $result = $this->conn->query($sql);
+        if ($result->num_rows > 0) {
+            return $result->fetch_assoc();
+        } else {
+            return null;
+        }
+    }
+    function palautaBackUp($id) {
+        $sql = "SELECT * FROM $this->backuptablename WHERE id = " . intval($id);
+        $result = $this->conn->query($sql);
+        if ($result->num_rows > 0) { 
+            $result = $result->fetch_assoc();
+            $aika = $result["aika"];
+            $otsikko = $result["otsikko"];
+            $sisalto = $result["sisalto"];
+            $kirjoittaja = $result["kirjoittaja"];
+            $sql = "UPDATE $this->tablename SET aika = '$aika', otsikko = '$otsikko', sisalto = '$sisalto', kirjoittaja = '$kirjoittaja' WHERE id = " . intval($id);
+            return $this->conn->query($sql);
+        } else {
+            return null;
         }
     }
 }

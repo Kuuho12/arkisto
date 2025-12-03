@@ -6,12 +6,13 @@ function TiivistelmanLuonti($row, $id)
     $client = Gemini::client($GeminiApiKey);
     $prompt = $row["otsikko"] . "\n" . $row["sisalto"] . "\n\n" . "Tee hyvin lyhyt tiivistelmä yllä olevasta artikkelista suomeksi.";
     $model = 'gemini-2.5-flash';
-
+    //var_dump($client);
     try {
         $result = $client
             ->generativeModel(model: $model)
             ->generateContent($prompt);
         $tiivistelma = $result->text();
+        //var_dump($result);
         $file = fopen('temp_ai/summary_' . $id . '.txt', 'w');
         fwrite($file, $tiivistelma);
         fclose($file);

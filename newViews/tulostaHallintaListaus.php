@@ -1,16 +1,8 @@
-
 <?php
-/*
-<li>
-    <article>
-        <header>
-            <h3><a href="single.html">Lorem ipsum fermentum ut nisl vitae</a></h3>
-            <time class="published" datetime="2015-10-20">October 20, 2015</time>
-        </header>
-        <a href="single.html" class="image"><img src="images/pic08.jpg" alt="" /></a>
-    </article>
-</li>*/
-for ($x = 1; $x < count($all_rows) + 1; $x++) {
+$alkumaara = $listaMaara * $sivu - 9;
+$listausPituus = count($all_rows);
+echo '<h3 class="listausotsikko">Artikkelit ' . $alkumaara . '-' . $alkumaara + $listausPituus - 1 .':</h3>';
+for ($x = 1; $x < $listausPituus + 1; $x++) {
     $index = $x - 1;
     $row = $all_rows[$index];
     echo '<li>';
@@ -21,7 +13,6 @@ for ($x = 1; $x < count($all_rows) + 1; $x++) {
     $newDate = date_create($row["aika"]);
     echo '<time class="published" datetime="' . $row["aika"] . '">' . (string) $newDate->format('Y-m-d H:i') . '</time>';
     @$sisaltoXML = simplexml_load_string($row["sisalto"]);
-    //$sisallonAlkuosa = $sisaltoXML ? substr( (string) $sisaltoXML->p[0], 0, 120) : substr($row["sisalto"], 0, 120);
     $onkoPitka = false;
     if ($sisaltoXML) {
         $full = (string) $sisaltoXML->p[0];
@@ -39,27 +30,18 @@ for ($x = 1; $x < count($all_rows) + 1; $x++) {
             $onkoPitka = true;
         }
     }
-    //echo " " . mb_strlen($sisallonAlkuosa);
     echo '<p id="uusin' . $x . 'sisalto">' . $sisallonAlkuosa . ($onkoPitka ? "..." : "") . '</p>';
+    echo '<div class="article-rivi">';
     echo '<a id="uusin' . $x . 'linkki" href="http://localhost/blogitehtava/artikkeli.php?' . http_build_query(['id' => (string)$row['id'], 'sivu' => $sivu]) . '">Lue lisää</a>';
+    echo '<form method="POST" action="muokkaus.php? ' . http_build_query(['id' => (string)$row['id']]) . '" >';
+    echo '<button type="submit" name="" value="">Muokkaa</button>';
+    echo '</form>';
+    echo '<form method="POST" action="hallinta.php" >';
+    echo '<button type="submit" name="id" value="'. $row['id'] . '">Palauta varmuuskopio</button>';
+    echo '</form>';
+    echo '</div>';
     echo '</header>';
     echo '</article>';
     echo '</li>';
 }
-?>
-
-<?php
-/*
-for ($x = 1; $x < count($all_rows) + 1; $x++) {
-    $index = $x - 1;
-    $row = $all_rows[$index];
-    echo '<div id="uusin' . $x . '">';
-    echo '<p id="uusin' . $x . 'otsikko">' . $row["otsikko"] . '</p>';
-    $newDate = date_create($row["aika"]);
-    echo '<p id="uusin' . $x . 'aika">' . (string) $newDate->format('Y-m-d H:i') . '</p>';
-    $sisaltoXML = simplexml_load_string($row["sisalto"]);
-    echo '<p id="uusin' . $x . 'sisalto">' . substr($sisaltoXML->p[0], 0, 120) . "..." . '</p>';
-    echo '<a id="uusin' . $x . 'linkki" href="http://localhost/blogitehtava/artikkeli.php?' . http_build_query(['id' => (string)$row['id'], 'sivu' => $sivu]) . '">Lue lisää</a>';
-    echo '</div>';
-}*/
 ?>

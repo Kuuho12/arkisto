@@ -1,6 +1,10 @@
 <?php
 use Gemini\Data\Blob;
+use Gemini\Data\GenerationConfig;
+use Gemini\Data\Schema;
 use Gemini\Enums\MimeType;
+use Gemini\Enums\DataType;
+use Gemini\Enums\ResponseMimeType;
 class GeminiHaku {
     public $GeminiApiKey;
     public $client;
@@ -21,6 +25,7 @@ class GeminiHaku {
         "text/csv" => MimeType::TEXT_CSV,
         "video/mp4" => MimeType::VIDEO_MP4
     ); 
+    public $structured_configs;
 
     function __construct($model = 'gemini-2.5-flash')
     {
@@ -28,6 +33,18 @@ class GeminiHaku {
         $this->client = \Gemini::client($this->GeminiApiKey);
         $this->model = $model;
         $this->valittuEsivalmisteltuKysely = $this->esivalmistellutKyselyt["default"];
+        $this->structured_configs = [
+        "recipes_with_cooking_time" => [
+            "properties" => [
+                'recipe_name' => new Schema(type: DataType::STRING),
+                'cooking_time_in_minutes' => new Schema(type: DataType::INTEGER)
+            ], 
+            "required" => [
+                'recipe_name',
+                'cooking_time_in_minutes'
+            ]
+        ]
+    ];
     }
     /**
      * Lisaa tiedoston tai tiedostoja objektin $files-listaan
@@ -91,9 +108,86 @@ class GeminiHaku {
             ->generateContent($prompt);
             $vastaus = $result->text();
             return [true, $vastaus];
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        $statusCode = $e->getResponse()->getStatusCode();
+        if ($statusCode === 429) {
+            return [false, "Rate limit exceeded. Please try again later."];
+        }
+        return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
+    }
+
+    function geminiStructuredHaku($arvot, $structure) {
+        $prompt = $this->valittuEsivalmisteltuKysely;
+        $arvotCount = count($arvot);
+        for($x = 1; $x <= $arvotCount; $x++) {
+            $prompt = str_replace("%$x", $arvot[$x-1], $prompt);
+        }
+        $valittuStructure = $this->structured_configs[$structure];
+        try {
+            $result = $this->client
+            ->generativeModel(model: $this->model)
+            ->withGenerationConfig(
+                generationConfig: new GenerationConfig(
+                    responseMimeType: ResponseMimeType::APPLICATION_JSON,
+                    responseSchema: new Schema(
+                        type: DataType::ARRAY,
+                        items: new Schema(
+                            type: DataType::OBJECT,
+                            properties: $valittuStructure["properties"],
+                            required: $valittuStructure["required"],
+                        )
+                    )
+                )
+            )
+            ->generateContent($prompt);
+            $vastaus = $result->text();
+            return [true, $vastaus];
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        $statusCode = $e->getResponse()->getStatusCode();
+        if ($statusCode === 429) {
+            return [false, "Rate limit exceeded. Please try again later."];
+        }
+        return [false, "HTTP Error $statusCode: " . $e->getMessage()];
+        } catch (\Exception $e) {
+        return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
+        }
+    }
+
+    function lisaaStructure ($nimi, $properties) {
+        // $properties = [['recipe_name', 'string', true], ['cooking_time_in_minutes', 'int', true]]
+        $structure = ["properties" => [], "required" => []];
+        for ($x = 0; $x < count($properties); $x++) {
+            $propertyName = $properties[$x][0];
+            switch ($properties[$x][1]) {
+                case "string":
+                    $structure["properties"][$propertyName] = new Schema(type: DataType::STRING);
+                    break;
+                case "int":
+                    $structure["properties"][$propertyName] = new Schema(type: DataType::INTEGER);
+                    break;
+                case "boolean":
+                    $structure["properties"][$propertyName] = new Schema(type: DataType::BOOLEAN);
+                    break;
+                case "object":
+                    $structure["properties"][$propertyName] = new Schema(type: DataType::OBJECT);
+                    break;
+                case "array":
+                    $structure["properties"][$propertyName] = new Schema(type: DataType::ARRAY);
+                    break;
+            }
+            if($properties[$x][2]) {
+                $structure["required"][] = $propertyName;
+            }
+        }
+        //var_dump($structure);
+        $this->structured_configs[$nimi] = $structure;
+        //var_dump($this->structured_configs);
+    }
+    function haeStructuret() {
+        return $this->structured_configs;
     }
     /**
      * Tekee haun Gemini API:iin käyttäen haun pohjana aiemmin valittua esivalmisteltua kyselyä
@@ -117,6 +211,12 @@ class GeminiHaku {
             ->generateContent($prompt);
         $vastaus = $result->text();
         return [true, $vastaus];
+    } catch (\GuzzleHttp\Exception\ClientException $e) {
+        $statusCode = $e->getResponse()->getStatusCode();
+        if ($statusCode === 429) {
+            return [false, "Rate limit exceeded. Please try again later."];
+        }
+        return [false, "HTTP Error $statusCode: " . $e->getMessage()];
     } catch (\Exception $e) {
         return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
     }

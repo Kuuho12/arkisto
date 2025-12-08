@@ -59,8 +59,8 @@ if (file_exists('temp_ai/optimization_' . $id . '.txt')) {
     fclose($file);
 } else {
     //$optimointi = $Geminihaku->HakukoneoptimoinninLuonti($row["otsikko"] . "\n" . $row["sisalto"], $id);
-    $Geminihaku->VaihdaValittuEsivalmisteltuKysely("seo");
-    $tulos = $Geminihaku->GeminiHaku([$row["otsikko"] . "\n" . $row["sisalto"]]);
+    $Geminihaku->valitseKysely("seo");
+    $tulos = $Geminihaku->geminiHaku([$row["otsikko"] . "\n" . $row["sisalto"]]);
     $optimointi = $tulos[1];
     if($tulos[0]) {
         $file = fopen('temp_ai/optimization_' . $id . '.txt', 'w');
@@ -71,8 +71,8 @@ if (file_exists('temp_ai/optimization_' . $id . '.txt')) {
 
 if (isset($_POST['reload_tiivistelma'])) {
     //$tiivistelma = $Geminihaku->TiivistelmanHaku($row["otsikko"] . "\n" . $row["sisalto"], $id);
-    $Geminihaku->VaihdaValittuEsivalmisteltuKysely("tiivistelma");
-    $tulos = $Geminihaku->GeminiHaku([$row["otsikko"] . "\n" . $row["sisalto"]]);
+    $Geminihaku->valitseKysely("tiivistelma");
+    $tulos = $Geminihaku->geminiHaku([$row["otsikko"] . "\n" . $row["sisalto"]]);
     $tiivistelma = $tulos[1];
     if($tulos[0]) {
         $file = fopen('temp_ai/summary_' . $id . '.txt', 'w');
@@ -85,8 +85,8 @@ if (isset($_POST['reload_tiivistelma'])) {
         $tiivistelma = fread($file, filesize('temp_ai/summary_' . $id . '.txt'));
         fclose($file);
     } else {
-        $Geminihaku->VaihdaValittuEsivalmisteltuKysely("tiivistelma");
-        $tulos = $Geminihaku->GeminiHaku([$row["otsikko"] . "\n" . $row["sisalto"]]);
+        $Geminihaku->valitseKysely("tiivistelma");
+        $tulos = $Geminihaku->geminiHaku([$row["otsikko"] . "\n" . $row["sisalto"]]);
         $tiivistelma = $tulos[1];
         if($tulos[0]) {
             $file = fopen('temp_ai/summary_' . $id . '.txt', 'w');

@@ -1,5 +1,5 @@
 <?php
-function TiivistelmanLuonti($row, $id)
+/*function TiivistelmanLuonti($row, $id)
 {
     $GeminiApiKey = getenv('GEMINI_API_KEY');
 
@@ -41,8 +41,10 @@ function Hakukoneoptimointi($row, $id)
     } catch (\Exception $e) {
         return "Hakukoneille optimointiehdotuksien luonti epäonnistui. Error: " . $e->getMessage();
     }
-}
+}*/
 
+require_once 'geminihaku.php';
+$Geminihaku = new GeminiHaku();
 
 if (!file_exists('temp_ai')) {
     mkdir('temp_ai');
@@ -56,18 +58,41 @@ if (file_exists('temp_ai/optimization_' . $id . '.txt')) {
     $optimointi = fread($file, filesize('temp_ai/optimization_' . $id . '.txt'));
     fclose($file);
 } else {
-    $optimointi = Hakukoneoptimointi($row, $id);
+    //$optimointi = $Geminihaku->HakukoneoptimoinninLuonti($row["otsikko"] . "\n" . $row["sisalto"], $id);
+    $Geminihaku->VaihdaValittuEsivalmisteltuKysely("seo");
+    $tulos = $Geminihaku->GeminiHaku([$row["otsikko"] . "\n" . $row["sisalto"]]);
+    $optimointi = $tulos[1];
+    if($tulos[0]) {
+        $file = fopen('temp_ai/optimization_' . $id . '.txt', 'w');
+        fwrite($file, $optimointi);
+        fclose($file);
+    }
 }
 
 if (isset($_POST['reload_tiivistelma'])) {
-    $tiivistelma = TiivistelmanLuonti($row, $id);
+    //$tiivistelma = $Geminihaku->TiivistelmanHaku($row["otsikko"] . "\n" . $row["sisalto"], $id);
+    $Geminihaku->VaihdaValittuEsivalmisteltuKysely("tiivistelma");
+    $tulos = $Geminihaku->GeminiHaku([$row["otsikko"] . "\n" . $row["sisalto"]]);
+    $tiivistelma = $tulos[1];
+    if($tulos[0]) {
+        $file = fopen('temp_ai/summary_' . $id . '.txt', 'w');
+        fwrite($file, $tiivistelma);
+        fclose($file);
+    }
 } else {
     if (file_exists('temp_ai/summary_' . $id . '.txt')) {
         $file = fopen('temp_ai/summary_' . $id . '.txt', 'r');
         $tiivistelma = fread($file, filesize('temp_ai/summary_' . $id . '.txt'));
         fclose($file);
     } else {
-        $tiivistelma = TiivistelmanLuonti($row, $id);
+        $Geminihaku->VaihdaValittuEsivalmisteltuKysely("tiivistelma");
+        $tulos = $Geminihaku->GeminiHaku([$row["otsikko"] . "\n" . $row["sisalto"]]);
+        $tiivistelma = $tulos[1];
+        if($tulos[0]) {
+            $file = fopen('temp_ai/summary_' . $id . '.txt', 'w');
+            fwrite($file, $tiivistelma);
+            fclose($file);
+        }
     }
 }
 ?>

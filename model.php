@@ -1,4 +1,6 @@
 <?php
+use Gemini\Data\Blob;
+use Gemini\Enums\MimeType;
 /**
  * Palauttaa tulostetun artikkelin
  * 
@@ -72,9 +74,13 @@ class SQLHaku
     public $tablename = "artikkelit3";
     public $backuptablename = "artikkelit4";
     public $conn;
+    public $stmt_insert;
+    public $stmt_insert_backup;
     function __construct()
     {
         $this->conn = new mysqli($this->servername, $this->username, $this->password, $this->dbname);
+        $this->stmt_insert = "INSERT INTO $this->tablename (aika, otsikko, sisalto, kirjoittaja) VALUES (?, ?, ?, ?)";
+        $this->stmt_insert_backup = "INSERT INTO $this->backuptablename (aika, otsikko, sisalto, kirjoittaja) VALUES (?, ?, ?, ?)";
     }
     /** 
      * Hakee artikkelin id:n perusteella

@@ -1,5 +1,5 @@
 <?php
-require_once 'vendor/autoload.php';
+//require_once 'vendor/autoload.php';
 require 'model.php';
 $listaMaara = 10;
 

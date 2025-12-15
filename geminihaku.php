@@ -1,4 +1,5 @@
 <?php
+require_once 'vendor/autoload.php';
 use Gemini\Data\Blob;
 use Gemini\Data\GenerationConfig;
 use Gemini\Data\Schema;
@@ -176,6 +177,9 @@ class GeminiHaku {
                     break;
                 case "array":
                     $structure["properties"][$propertyName] = new Schema(type: DataType::ARRAY);
+                    break;
+                case "number":
+                    $structure["properties"][$propertyName] = new Schema(type: DataType::NUMBER);
                     break;
             }
             if($properties[$x][2]) {

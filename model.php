@@ -1,6 +1,4 @@
 <?php
-use Gemini\Data\Blob;
-use Gemini\Enums\MimeType;
 /**
  * Palauttaa tulostetun artikkelin
  * 

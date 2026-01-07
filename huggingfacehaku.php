@@ -118,9 +118,10 @@ class HFHaku {
         $prompt = $tekstiosa;
 
         $base64Prompt = base64_encode($prompt);
+        $base64FilePath = base64_encode($filePath);
         $parts = explode(':', $this->model);
         $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $base64Prompt . '_' . $filePath . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+        $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $base64Prompt . '_' . $base64FilePath  . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
 
         if(file_exists($tiedostonPolku)) {
             $file = fopen($tiedostonPolku, 'r');

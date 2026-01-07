@@ -24,6 +24,17 @@ class AIHuggingface extends AI {
     public function __construct($apiKey, $model = "deepseek-ai/DeepSeek-V3.2:novita") {
         parent::__construct($apiKey, "huggingface", $model);
     }
+    /**
+     * Suorittaa tekstihakun tekoälyrajapintaan tai hakee valmiin vastauksen välimuistista.
+     * 
+     * Koodi aluksi tarkistaa onko juuri samanlaisen haun vastaus välimuistissa. Jos on, se lataa vastauksen tiedostosta ja palauttaa sen.
+     * Muuten se suorittaa haun Hugging Face API:iin ja tallentaa vastauksen välimuistiin tulevia hakuja varten.
+     * Koodi palauttaa listan, jonka esimmäinen osa on boolean, joka kertoo onnistuiko haku ja toinen osa haun tuloksen tai virheilmoituksen.
+     * 
+     * @param string $prompt Tekoälylle lähetettävä kysely
+     * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-1.0)
+     * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
+     */
     public function tekstiHaku2($prompt, $temperature = 0.8, $max_tokens = null)
     {
         $base64Prompt = base64_encode($prompt);
@@ -65,17 +76,30 @@ class AIHuggingface extends AI {
         }
         
     }
-    function tiedostoHaku($tekstiosa, $filePath, $temperature = 0.8, $max_tokens = null) {
+    /**
+     * Suorittaa tiedostohaun tekoälyrajapintaan tai hakee valmiin vastauksen, tukee teksti- ja kuva-tiedostoja.
+     * 
+     * Toimii vain tietyillä malleilla (esim. google/gemma-3-27b-it:nebius tai zai-org/GLM-4.6V-Flash:novita)
+     * Koodi aluksi tarkistaa onko juuri samanlaisen haun vastaus välimuistissa. Jos on, se lataa vastauksen tiedostosta ja palauttaa sen.
+     * Muuten se suorittaa haun Hugging Face API:iin ja tallentaa vastauksen välimuistiin tulevia hakuja varten.
+     * Koodi palauttaa listan, jonka esimmäinen osa on boolean, joka kertoo onnistuiko haku ja toinen osa haun tuloksen tai virheilmoituksen.
+     * 
+     * @param string $prompt Tekoälylle lähetettävä kysely
+     * @param string $filePath Tiedoston polku, josta tiedosto haetaan
+     * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-1.0)
+     * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
+     */
+    function tiedostoHaku1($prompt, $filePath, $temperature = 0.8, $max_tokens = null) {
         if (!file_exists($filePath)) {
             return [false, "Tiedostoa ei löytynyt: " . $filePath];
         }
         $mimeType = mime_content_type($filePath);
-        $prompt = $tekstiosa;
 
         $base64Prompt = base64_encode($prompt);
+        $base64FilePath = base64_encode($filePath);
         $parts = explode(':', $this->model);
         $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $base64Prompt . '_' . $filePath . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+        $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $base64Prompt . '_' . $base64FilePath . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
 
         if(file_exists($tiedostonPolku)) {
             $file = fopen($tiedostonPolku, 'r');
@@ -88,7 +112,7 @@ class AIHuggingface extends AI {
             if (strpos($mimeType, 'text/') === 0) {
                 // Text file: read content and append to prompt
                 $content = file_get_contents($filePath);
-                $prompt = $tekstiosa . "\n\n" . $content;
+                $prompt = $prompt . "\n\n" . $content;
                 $messages = [['role' => 'user', 'content' => $prompt]];
             } elseif (strpos($mimeType, 'image/') === 0) {
                 // Image file: base64 encode and include as data URI
@@ -121,6 +145,16 @@ class AIHuggingface extends AI {
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
     }
+    /**
+     * Suorittaa strukturoidun haun annetun JSON-skeeman perusteella.
+     * 
+     * Toimii vain tietyillä malleilla, kuten Qwen-3.2:lla ("Qwen/Qwen3-32B:groq")
+     * Koodi palauttaa listan, jonka esimmäinen osa on boolean, joka kertoo onnistuiko haku ja toinen osa haun tuloksen tai virheilmoituksen.
+     * 
+     * @param string $prompt Tekoälylle lähetettävä kysely
+     * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-1.0). Suositellaan pitämään arvossa 0.0, jotta tekoäly noudattaa JSON-skeemaa
+     * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
+     */
     function strukturoituHaku2($prompt, $jsonSchema, $temperature = 0.0, $max_tokens = null) {
         $base64Prompt = base64_encode($prompt);
         $parts = explode(':', $this->model);
@@ -164,9 +198,18 @@ class AIHuggingface extends AI {
         return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
     }
     }
+    /**
+     * Lisaa JSON-skeeman $jsonSchemas-listaan
+     * 
+     * @param string $jsonSchemaAvain JSON-skeeman avain, jolla skeema tallennetaan listaan
+     * @param array $jsonSchema JSON-skeema listamuodossa
+     */
     function lisaaStructure($jsonSchemaAvain, $jsonSchema) {
         $this->jsonSchemas[$jsonSchemaAvain] = $jsonSchema;
     }
+    /**
+     * Palauttaa tallennetut JSON-skeemat
+     */
     function haeStructuret() {
         return $this->jsonSchemas;
     }

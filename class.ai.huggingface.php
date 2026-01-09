@@ -37,7 +37,7 @@ class AIHuggingface extends AI {
      */
     public function tekstiHaku2($prompt, $temperature = 0.8, $max_tokens = null)
     {
-        $base64Prompt = base64_encode($prompt);
+        $base64Prompt = str_replace("/", "-", base64_encode($prompt));
         $parts = explode(':', $this->model);
         $model = str_replace("/", "-", $parts[0]);
         $tiedostonPolku = 'temp_ai/hf_tekstihaku_' . $base64Prompt . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
@@ -76,6 +76,96 @@ class AIHuggingface extends AI {
         }
         
     }
+    function suoritaHaku($arvot, $filePath = null, $temperature = 0.8, $max_tokens = null) {
+        $prompt = parent::suoritaHaku($arvot);
+        try {
+            if ($filePath == null) {
+                $base64Prompt = str_replace("/", "-", base64_encode($prompt));
+                $parts = explode(':', $this->model);
+                $model = str_replace("/", "-", $parts[0]);
+                $tiedostonPolku = 'temp_ai/hf_tekstihaku_' . $base64Prompt . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+                if(file_exists($tiedostonPolku)) {
+                    $file = fopen($tiedostonPolku, 'r');
+                    $vastaus = fread($file, filesize($tiedostonPolku));
+                    fclose($file);
+                    //echo "Ladattu välimuistista: " . $tiedostonPolku . "\n";
+                    return [true, $vastaus];
+                }
+                $response = $this->client->chat()->create([
+                'model' => $this->model,
+                'messages' => [
+                    [
+                        'role' => 'user', 
+                        'content' => $prompt
+                    ],
+                ],
+                'max_tokens' => $max_tokens,
+                'temperature' => $temperature,
+                ]);
+                $vastaus = $response->choices[0]->message->content;
+                $file = fopen($tiedostonPolku, 'w');
+                fwrite($file, $vastaus);
+                fclose($file);
+                return [true, $vastaus];
+            } else {
+                if (!file_exists($filePath)) {
+                    return [false, "Tiedostoa ei löytynyt: " . $filePath];
+                }
+                $mimeType = mime_content_type($filePath);
+
+                $base64Prompt = str_replace("/", "-", base64_encode($prompt));
+                $base64FilePath = str_replace("/", "-", base64_encode($filePath));
+                $parts = explode(':', $this->model);
+                $model = str_replace("/", "-", $parts[0]);
+                $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $base64Prompt . '_' . $base64FilePath . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+
+                if(file_exists($tiedostonPolku)) {
+                    $file = fopen($tiedostonPolku, 'r');
+                    $vastaus = fread($file, filesize($tiedostonPolku));
+                    fclose($file);
+                    //echo "Ladattu välimuistista: " . $tiedostonPolku . "\n";
+                    return [true, $vastaus];
+                }
+                if (strpos($mimeType, 'text/') === 0) {
+                    // Text file: read content and append to prompt
+                    $content = file_get_contents($filePath);
+                    $prompt = $prompt . "\n\n" . $content;
+                    $messages = [['role' => 'user', 'content' => $prompt]];
+                } elseif (strpos($mimeType, 'image/') === 0) {
+                    // Image file: base64 encode and include as data URI
+                    $base64 = base64_encode(file_get_contents($filePath));
+                    $dataUri = "data:$mimeType;base64,$base64";
+                    $messages = [
+                        ['role' => 'user', 'content' => [
+                            ['type' => 'text', 'text' => $prompt],
+                            ['type' => 'image_url', 'image_url' => ['url' => $dataUri]]
+                        ]]
+                    ];
+                } else {
+                    return [false, "Tiedostotyyppiä ei tueta: " . $mimeType];
+                }
+                $response = $this->client->chat()->create([
+                    'model' => $this->model,
+                    'messages' => $messages,
+                    'max_tokens' => $max_tokens,
+                    'temperature' => $temperature,
+                ]);
+                $vastaus = $response->choices[0]->message->content;
+                $file = fopen($tiedostonPolku, 'w');
+                fwrite($file, $vastaus);
+                fclose($file);
+                return [true, $vastaus];
+            }
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        $statusCode = $e->getResponse()->getStatusCode();
+        if ($statusCode === 429) {
+            return [false, "Rate limit exceeded. Please try again later."];
+        }
+        return [false, "HTTP Error $statusCode: " . $e->getMessage()];
+        } catch (\Exception $e) {
+        return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
+        }
+    }
     /**
      * Suorittaa tiedostohaun tekoälyrajapintaan tai hakee valmiin vastauksen, tukee teksti- ja kuva-tiedostoja.
      * 
@@ -95,8 +185,8 @@ class AIHuggingface extends AI {
         }
         $mimeType = mime_content_type($filePath);
 
-        $base64Prompt = base64_encode($prompt);
-        $base64FilePath = base64_encode($filePath);
+        $base64Prompt = str_replace("/", "-", base64_encode($prompt));
+        $base64FilePath = str_replace("/", "-", base64_encode($filePath));
         $parts = explode(':', $this->model);
         $model = str_replace("/", "-", $parts[0]);
         $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $base64Prompt . '_' . $base64FilePath . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
@@ -156,7 +246,7 @@ class AIHuggingface extends AI {
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
      */
     function strukturoituHaku2($prompt, $jsonSchema, $temperature = 0.0, $max_tokens = null) {
-        $base64Prompt = base64_encode($prompt);
+        $base64Prompt = str_replace("/", "-", base64_encode($prompt));
         $parts = explode(':', $this->model);
         $model = str_replace("/", "-", $parts[0]);
         $tiedostonPolku = 'temp_ai/hf_structuredhaku_' . $base64Prompt . '_' . $jsonSchema . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';

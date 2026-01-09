@@ -11,6 +11,7 @@ class AI {
         "seo" => "%1\n\nAnna lista ehdotuksia %1 hakukoneoptimointiin yllä olevasta artikkelista suomeksi. %2"
     ];
     public $valittuEsivalmisteltuKysely;
+    public $files = array();
     public function __construct($apiKey, $api = "gemini", $model = null)
     {
         $this->apiKey = $apiKey;
@@ -41,6 +42,14 @@ class AI {
         }
         return $childClass->tekstiHaku2($prompt);
     }
+    function suoritaHaku($arvot) {
+        $prompt = $this->valittuEsivalmisteltuKysely;
+        $arvotCount = count($arvot);
+        for($x = 1; $x <= $arvotCount; $x++) {
+            $prompt = str_replace("%$x", $arvot[$x-1], $prompt);
+        }
+        return $prompt;
+    }
     /**
      * Muotoilee promptin esivalmistellun kyselyn pohjalta ja antaa lapsiluokan hoitaa tiedostohaun loppuun.
      * 
@@ -59,6 +68,34 @@ class AI {
         } else {
         return $childClass->tiedostoHaku2($prompt);
         }
+    }
+    /**
+     * Lisaa tiedoston tai tiedostoja objektin $files-listaan
+     * 
+     * Tiedoston avain ja arvo ovat identiset.
+     * 
+     * @param string $tiedosto Tiedoston suhteellinen polku (relative path)
+     */
+    public function lisaaTiedosto ($tiedosto) {
+        if(is_array($tiedosto)) {
+            for($x = 0; $x < count($tiedosto); $x++) {
+                $this->files[$tiedosto[$x]] = $tiedosto[$x];
+            }
+        } else {
+        $this->files[$tiedosto] = $tiedosto;
+        }
+    }
+    /**
+     * Poistaa tiedoston objektin $files-listasta
+     */
+    public function poistaTiedosto ($tiedosto) {
+        unset($this->files[$tiedosto]);
+    }
+    /**
+     * Palauttaa objektin $files-listan
+     */
+    public function haeTiedostot () {
+        return $this->files;
     }
     /**
      * Muotoilee promptin esivalmistellun kyselyn pohjalta ja antaa lapsiluokan hoitaa strukturoidun haun loppuun.

@@ -16,7 +16,6 @@ class AIGemini extends AI {
         "text/csv" => MimeType::TEXT_CSV,
         "video/mp4" => MimeType::VIDEO_MP4
     ); 
-    public $files = array();
     public $structured_configs;
     public function __construct($apiKey) {
         parent::__construct($apiKey, "gemini", 'gemini-2.5-flash');
@@ -48,6 +47,49 @@ class AIGemini extends AI {
         return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
     }
     }
+    function suoritaHaku($arvot) {
+        $prompt = parent::suoritaHaku($arvot);
+        try {
+            if(count($this->files) > 0) {
+                $prompt = [$prompt];
+                foreach ($this->files as $tiedosto) {
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $mime_type = finfo_file($finfo, $tiedosto);
+                    if (in_array($mime_type, array_keys($this->mimeTypes))) {
+                        $geminiMimeType = $this->mimeTypes[$mime_type];
+                    } 
+                    else {
+                        return [false, "Epätuettu tiedostomuoto: " . $mime_type];
+                    }
+                    $prompt[] = new Blob(
+                    mimeType: $geminiMimeType,
+                    data: base64_encode(
+                        file_get_contents($tiedosto)
+                    )
+                    );
+                }
+                $result = $this->client
+                    ->generativeModel(model: $this->model)
+                    ->generateContent($prompt);
+                $vastaus = $result->text();
+                return [true, $vastaus];
+            } else {
+                $result = $this->client
+                    ->generativeModel(model: $this->model)
+                    ->generateContent($prompt);
+                $vastaus = $result->text();
+                return [true, $vastaus];
+            }
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $statusCode = $e->getResponse()->getStatusCode();
+            if ($statusCode === 429) {
+                return [false, "Rate limit exceeded. Please try again later."];
+            }
+            return [false, "HTTP Error $statusCode: " . $e->getMessage()];
+        } catch (\Exception $e) {
+            return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
+        }
+    }
     /**
      * Tekee haun Gemini API:iin aiemmin tallennetuilla tiedostoilla
      * 
@@ -56,10 +98,10 @@ class AIGemini extends AI {
      * Lopuksi looppauksessa tiedoston data tallennetaan blobina prompt-listamuuttujaan. Looppauksen jälkeen tehdään haku Gemini API:iin promptilla.
      * Käsiteltävt tiedostot lisätään lisaaTiedosto-funktiolla
      * 
-     *  @param array $tekstiosa Tekoälylle lähetettävän kyselyn tekstiosa
+     *  @param array $tekstiosa Tekoälylle lähetettävä kysely
      */
-    function tiedostoHaku2 ($tekstiosa) {
-        $prompt = [$tekstiosa];
+    function tiedostoHaku2 ($prompt) {
+        $prompt = [$prompt];
         foreach ($this->files as $tiedosto) {
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
             $mime_type = finfo_file($finfo, $tiedosto);
@@ -91,34 +133,6 @@ class AIGemini extends AI {
         } catch (\Exception $e) {
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
-    }
-    /**
-     * Lisaa tiedoston tai tiedostoja objektin $files-listaan
-     * 
-     * Tiedoston avain ja arvo ovat identiset.
-     * 
-     * @param string $tiedosto Tiedoston suhteellinen polku (relative path)
-     */
-    function lisaaTiedosto ($tiedosto) {
-        if(is_array($tiedosto)) {
-            for($x = 0; $x < count($tiedosto); $x++) {
-                $this->files[$tiedosto[$x]] = $tiedosto[$x];
-            }
-        } else {
-        $this->files[$tiedosto] = $tiedosto;
-        }
-    }
-    /**
-     * Poistaa tiedoston objektin $files-listasta
-     */
-    function poistaTiedosto ($tiedosto) {
-        unset($this->files[$tiedosto]);
-    }
-    /**
-     * Palauttaa objektin $files-listan
-     */
-    function haeTiedostot () {
-        return $this->files;
     }
     /**
      * Tekee strukturoidun haun Gemini API:iin käyttäen annettua promptia ja aiemmin tallennettua JSON-skeemaa

@@ -54,6 +54,11 @@ function tulostaLisaysArtikkeli($result) {
     require_once 'newViews/tulostaLisaysArtikkeli.php';
     return ob_get_clean();
 }
+function tulostaChattiIkkuna() {
+    ob_start();
+    require_once 'newViews/tulostaChatIkkuna.php';
+    return ob_get_clean();
+}
 /**
  * Käytetään datan hakuun tietokannasta
  * 

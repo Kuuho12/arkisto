@@ -303,5 +303,29 @@ class AIHuggingface extends AI {
     function haeStructuret() {
         return $this->jsonSchemas;
     }
+    function modelExists($modelName = null) {
+        if ($modelName === null) {
+        $modelName = $this->model;
+        }
+        try {
+            // Use a minimal prompt to test
+            $response = $this->client->chat()->create([
+                'model' => $modelName,
+                'messages' => [['role' => 'user', 'content' => 'Test']],
+                'max_tokens' => 1,  // Minimal to avoid token waste
+                'temperature' => 0.0
+            ]);
+            return [true, null];  // If no exception, model exists
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $statusCode = $e->getResponse()->getStatusCode();
+            if ($statusCode === 404 || $statusCode === 400) {
+                return [false, $e->getMessage()];  // Model/provider not found or invalid
+            }
+            // Re-throw other errors (e.g., auth/rate limit)
+            throw $e;
+        } catch (\Throwable $e) {
+            return [false, $e->getMessage()];  // Any other error likely means model doesn't exist
+        }
+    }
 }
 ?>

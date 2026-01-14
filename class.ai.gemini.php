@@ -17,8 +17,8 @@ class AIGemini extends AI {
         "video/mp4" => MimeType::VIDEO_MP4
     ); 
     public $structured_configs;
-    public function __construct($apiKey) {
-        parent::__construct($apiKey, "gemini", 'gemini-2.5-flash');
+    public function __construct($apiKey, $model = 'gemini-2.5-flash') {
+        parent::__construct($apiKey, "gemini", $model);
     }
     /**
      * Tekee haun Gemini API:iin käyttäen haun pohjana aiemmin valittua esivalmisteltua kyselyä
@@ -223,6 +223,27 @@ class AIGemini extends AI {
      */
     function haeStructuret() {
         return $this->structured_configs;
+    }
+    function modelExists($modelName = null) {
+        if ($modelName === null) {
+        $modelName = $this->model;
+        }
+        try {
+            // Use a minimal prompt to test
+            $result = $this->client
+                ->generativeModel(model: $modelName)
+                ->generateContent('Test');  // Short prompt to minimize token usage
+            return [true, null];  // If no exception, model exists
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $statusCode = $e->getResponse()->getStatusCode();
+            if ($statusCode === 404 || $statusCode === 400) {
+                return [false, $e->getMessage()];  // Model not found or invalid
+            }
+            // Re-throw other errors (e.g., auth issues)
+            throw $e;
+        } catch (\Exception $e) {
+            return [false, $e->getMessage()];  // Any other error likely means model doesn't exist
+        }
     }
 }
 ?>

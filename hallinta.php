@@ -24,11 +24,12 @@ $taulunPituus =  $sqlModel->haeCount();
 $all_rows = $sqlModel->haeListatus($listaMaara, $sivu, null);
 $listaus = tulostaHallintaListaus($all_rows, $taulunPituus, $listaMaara, $sivu);
 $linkit = tulostaLinkit($taulunPituus, $listaMaara, $url, $sivu, null);
+$chatIkkuna = tulostaChattiIkkuna();
 
 $dom = new DOMDocument();
 @$html_file = file_get_contents('template/hallintatemplate.html');
-$replace_strings = ['[LISTAUS]', '[LINKIT]'];
-$html_file = str_replace($replace_strings, [$listaus, $linkit], $html_file);
+$replace_strings = ['[LISTAUS]', '[LINKIT]', '[CHATIKKUNA]'];
+$html_file = str_replace($replace_strings, [$listaus, $linkit, $chatIkkuna], $html_file);
 @$html_for_dom = mb_convert_encoding($html_file, 'HTML-ENTITIES', 'UTF-8');
 @$dom->loadHTML($html_for_dom);
 echo $dom->saveHTML();

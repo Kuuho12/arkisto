@@ -1,14 +1,17 @@
 <?php
 require_once 'class.ai.gemini.php';
 require_once 'class.ai.huggingface.php';
+session_start();
 header('Content-Type: application/json');
 
 $json = file_get_contents('php://input');
 $data = json_decode($json, true);
+$pyynto = $data['pyynto'] ?? null;
 
-if($data['pyynto'] == 1) { //Testataan onko mallia olemassa
+if($pyynto == 1) { //Testataan onko mallia olemassa
     $api = $data['api'];
     $malli = $data['malli'];
+    $_SESSION['chat_history'] = [];
     if($api === "Gemini") {
         $AIGemini = new AIGemini(getenv('GEMINI_API_KEY'), $malli);
         $tulos = $AIGemini->modelExists();
@@ -30,23 +33,28 @@ if($data['pyynto'] == 1) { //Testataan onko mallia olemassa
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Tuntematon API-valinta.']);
     }
-} else if($data['pyynto'] == 2) { //Käsitellään käyttäjän viesti
+} else { //Käsitellään käyttäjän viesti
     $api = $data['api'];
     $malli = $data['malli'];
     $viesti = $data['viesti']; //Jatkokehitysideaksi mallin, apin ja muiden asetusten välimuistutus
     if($api === "Gemini") {
         $AIGemini = new AIGemini(getenv('GEMINI_API_KEY'), $malli);
-        $vastaus = $AIGemini->suoritaHaku([$viesti]);
+        $vastaus = $AIGemini->chattays([$viesti], $_SESSION['chat_history'] ?? []);
+        if(count($vastaus) > 2) {
+        $_SESSION['chat_history'] = array_merge($_SESSION['chat_history'] ?? [], $vastaus[2]);
+        }
         echo json_encode(['status' => 'success', 'vastaus' => $vastaus]);
     } else if ($api === "Hugging Face") {
         $Aihuggingface = new AIHuggingface(getenv('HF_TOKEN'), $malli);
-        $vastaus = $Aihuggingface->suoritaHaku([$viesti]);
+        $vastaus = $Aihuggingface->chattays([$viesti], $_SESSION['chat_history'] ?? []);
+        if(count($vastaus) > 2) {
+        $_SESSION['chat_history'] = $vastaus[2];
+        unset($vastaus[2]);
+        }
         echo json_encode(['status' => 'success', 'vastaus' => $vastaus]);
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Tuntematon API-valinta.']);
     }
-} else {
-    echo json_encode(['status' => 'error', 'message' => 'Tuntematon pyyntö.']);
 }
 /*$GeminiMallit = [
     'gemini-2.5-flash' => 'gemini-2.5-flash',

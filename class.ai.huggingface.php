@@ -76,6 +76,33 @@ class AIHuggingface extends AI {
         }
         
     }
+    function chattays($arvot, $chathistory, $temperature = 0.8, $max_tokens = null) {
+        $prompt = parent::suoritaHaku($arvot);
+        try {
+            $messages = array_merge($chathistory, [['role' => 'user', 'content' => $prompt]]);
+            $response = $this->client->chat()->create([
+                'model' => $this->model,
+                'messages' => $messages,
+                'max_tokens' => $max_tokens,
+                'temperature' => $temperature,
+            ]);
+            $vastaus = $response->choices[0]->message->content;
+            $chathistory = array_merge($chathistory, [
+                ['role' => 'user', 'content' => $prompt],
+                ['role' => 'assistant', 'content' => $vastaus]
+            ]);
+            return [true, $vastaus, $chathistory];
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        $statusCode = $e->getResponse()->getStatusCode();
+        if ($statusCode === 429) {
+            return [false, "Rate limit exceeded. Please try again later."];
+        }
+        return [false, "HTTP Error $statusCode: " . $e->getMessage()];
+        } catch (\Exception $e) {
+        return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
+        }
+
+    }
     function suoritaHaku($arvot, $filePath = null, $temperature = 0.8, $max_tokens = null) {
         $prompt = parent::suoritaHaku($arvot);
         try {

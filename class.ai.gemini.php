@@ -6,6 +6,8 @@ use Gemini\Data\Schema;
 use Gemini\Enums\MimeType;
 use Gemini\Enums\DataType;
 use Gemini\Enums\ResponseMimeType;
+use Gemini\Data\Content;
+use Gemini\Enums\Role;
 class AIGemini extends AI {
     private $mimeTypes = array(
         "image/png" => MimeType::IMAGE_PNG,
@@ -46,6 +48,29 @@ class AIGemini extends AI {
     } catch (\Exception $e) {
         return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
     }
+    }
+    function chattays($arvot, $chathistory) {
+        $prompt = parent::suoritaHaku($arvot);
+        try {
+            $chat = $this->client
+                ->generativeModel(model: $this->model)
+                ->startChat(history: $chathistory);
+            $result = $chat->sendMessage($prompt);
+            $vastaus = $result->text();
+            $chatlogs = [
+            Content::parse(part: $prompt, role: Role::USER),
+            Content::parse(part: $vastaus, role: Role::MODEL)
+            ];
+            return [true, $vastaus, $chatlogs];
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $statusCode = $e->getResponse()->getStatusCode();
+            if ($statusCode === 429) {
+                return [false, "Rate limit exceeded. Please try again later."];
+            }
+            return [false, "HTTP Error $statusCode: " . $e->getMessage()];
+        } catch (\Exception $e) {
+            return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
+        }
     }
     function suoritaHaku($arvot) {
         $prompt = parent::suoritaHaku($arvot);

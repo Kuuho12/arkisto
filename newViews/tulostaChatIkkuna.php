@@ -131,7 +131,7 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({api : valittuAPI, malli : valittuMalli, viesti : userMessage, pyynto : 2}) // Convert JS object to JSON string
+                body: JSON.stringify({api : valittuAPI, malli : valittuMalli, viesti : userMessage}) // Convert JS object to JSON string
             })
             .then(response => response.json()) // Parse the JSON from PHP
             .then(data => {
@@ -142,6 +142,7 @@
                     vastausDiv.innerHTML = `<p>${data.vastaus[1]}</p>`;
                     chatWindow.insertBefore(vastausDiv, keskusteluDiv);
                     chatWindow.scrollTop = chatWindow.scrollHeight;
+                    console.log(data.vastaus);
                 } else {
                     alert('Tapahtui virhe: ' + data.message);
                 }

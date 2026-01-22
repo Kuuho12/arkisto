@@ -49,6 +49,7 @@ class AIGemini extends AI {
         return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
     }
     }
+
     function chattays($arvot, $chathistory) {
         $prompt = parent::suoritaHaku($arvot);
         try {
@@ -72,6 +73,7 @@ class AIGemini extends AI {
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
     }
+    
     function suoritaHaku($arvot) {
         $prompt = parent::suoritaHaku($arvot);
         try {
@@ -253,21 +255,23 @@ class AIGemini extends AI {
         if ($modelName === null) {
         $modelName = $this->model;
         }
+        $malli = false;
         try {
+            $malli = !is_null($this->client->models()->retrieve('models/' . $modelName));
             // Use a minimal prompt to test
             $result = $this->client
                 ->generativeModel(model: $modelName)
                 ->generateContent('Test');  // Short prompt to minimize token usage
-            return [true, null];  // If no exception, model exists
+            return [true, null, $malli];  // If no exception, model exists
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             $statusCode = $e->getResponse()->getStatusCode();
             if ($statusCode === 404 || $statusCode === 400) {
-                return [false, $e->getMessage()];  // Model not found or invalid
+                return [false, $e->getMessage(), $malli];  // Model not found or invalid
             }
             // Re-throw other errors (e.g., auth issues)
             throw $e;
         } catch (\Exception $e) {
-            return [false, $e->getMessage()];  // Any other error likely means model doesn't exist
+            return [false, $e->getMessage(), $malli];  // Any other error likely means model doesn't exist
         }
     }
 }

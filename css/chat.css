@@ -98,3 +98,7 @@ button:disabled {
     pointer-events: none;
     color: rgba(160, 160, 160, 0.3) !important;
 }
+.virheViesti {
+    background-color: #ffcccc; 
+    border-color: #ff0000; 
+}

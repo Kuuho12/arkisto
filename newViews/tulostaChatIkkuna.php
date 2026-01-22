@@ -33,6 +33,7 @@
         });
     });
     let valittuMalli = null;
+    let onkoMalliValinta = false;
     function malliKysymys() {
         const kysymysDiv = document.createElement('div');
         kysymysDiv.classList.add('viesti');
@@ -45,6 +46,11 @@
         inputElement.id = 'malliInput';
         inputElement.setAttribute("list", "mallit");
         vastausDiv.appendChild(inputElement);
+        inputElement.addEventListener('keydown', (event) => {
+            if(event.key === 'Enter' && !onkoMalliValinta) {
+                malliValinta();
+            }
+        });
         const dataList = document.createElement('datalist');
         dataList.id = 'mallit';
         vastausDiv.appendChild(dataList);
@@ -65,42 +71,48 @@
         buttonElement.innerHTML = "Lähetä";
         vastausDiv.appendChild(buttonElement);
         buttonElement.addEventListener('click', () => {
-            valittuMalli = document.getElementById('malliInput').value;
-            if(valittuMalli === "") {
-                alert("Valitse malli ennen jatkamista.");
-                return;
-            }
-            buttonElement.disabled = true;
-            fetch('chat_handler', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({api : valittuAPI, malli : valittuMalli, pyynto : 1}) // Convert JS object to JSON string
-            })
-            .then(response => response.json()) // Parse the JSON from PHP
-            .then(data => {
-                if(data.status === 'success') {
-                    const viestiDiv = document.createElement('div');
-                    viestiDiv.classList.add('viesti', 'kayttajanViesti');
-                    viestiDiv.innerHTML = `<p>Valitsit mallin: ${valittuMalli}</p>`;
-                    chatWindow.appendChild(viestiDiv);
-                    vastausDiv.remove();
-                    viestiDiv2 = document.createElement('div');
-                    viestiDiv2.classList.add('viesti');
-                    viestiDiv2.innerHTML = `<p>Aloita keskustelu tekoälyn kanssa</p>`;
-                    chatWindow.appendChild(viestiDiv2);
-                    chatWindow.scrollTop = chatWindow.scrollHeight;
-                    aiKeskustelu();
-                } else {
-                    alert('Mallia ei löydy tai se ei toimi juuri nyt. Valitse toinen malli.');
-                    console.log(data.message);
-                    buttonElement.disabled = false;
-                    return;
-                }
-            })
+            malliValinta();
         });
     }
+    function malliValinta() {
+        vastausDiv = document.querySelector('.vastaus');
+        valittuMalli = document.getElementById('malliInput').value;
+        if(valittuMalli === "") {
+            alert("Valitse malli ennen jatkamista.");
+            return;
+        }
+        onkoMalliValinta = true;
+        buttonElement.disabled = true;
+        fetch('chat_handler', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({api : valittuAPI, malli : valittuMalli, pyynto : 1}) // Convert JS object to JSON string
+        })
+        .then(response => response.json()) // Parse the JSON from PHP
+        .then(data => {
+            if(data.status === 'success') {
+                const viestiDiv = document.createElement('div');
+                viestiDiv.classList.add('viesti', 'kayttajanViesti');
+                viestiDiv.innerHTML = `<p>Valitsit mallin: ${valittuMalli}</p>`;
+                chatWindow.appendChild(viestiDiv);
+                vastausDiv.remove();
+                viestiDiv2 = document.createElement('div');
+                viestiDiv2.classList.add('viesti');
+                viestiDiv2.innerHTML = `<p>Aloita keskustelu tekoälyn kanssa</p>`;
+                chatWindow.appendChild(viestiDiv2);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+                aiKeskustelu();
+            } else {
+                alert('Mallia ei löydy tai se ei toimi juuri nyt. Valitse toinen malli.');
+                console.log(data.message);
+                buttonElement.disabled = false;
+                return;
+            }
+        })
+    }
+    let onkoChat = false;
     function aiKeskustelu() {
         const keskusteluDiv = document.createElement('div');
         keskusteluDiv.classList.add('keskustelu');
@@ -109,44 +121,61 @@
         inputElement.id = 'chatInput';
         inputElement.placeholder = 'Kirjoita viestisi...';
         keskusteluDiv.appendChild(inputElement);
+        inputElement.addEventListener('keydown', (event) => {
+            if(event.key === 'Enter' && !onkoChat) {
+                chat();
+            }
+        });
         const sendButton = document.createElement('button');
         sendButton.id = 'sendButton';
         sendButton.innerHTML = 'Lähetä';
         keskusteluDiv.appendChild(sendButton);
         sendButton.addEventListener('click', () => {
-            const userMessage = document.getElementById('chatInput').value;
-            if(userMessage === "") {
-                alert("Kirjoita viesti ennen lähettämistä.");
-                return;
-            }
-            const viestiDiv = document.createElement('div');
-            viestiDiv.classList.add('viesti', 'kayttajanViesti');
-            viestiDiv.innerHTML = `<p>${userMessage}</p>`;
-            chatWindow.insertBefore(viestiDiv, keskusteluDiv);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-            document.getElementById('chatInput').value = '';
-            sendButton.disabled = true;
-            fetch('chat_handler', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({api : valittuAPI, malli : valittuMalli, viesti : userMessage}) // Convert JS object to JSON string
-            })
-            .then(response => response.json()) // Parse the JSON from PHP
-            .then(data => {
-                sendButton.disabled = false;
-                if(data.status === 'success') {
-                    const vastausDiv = document.createElement('div');
-                    vastausDiv.classList.add('viesti');
-                    vastausDiv.innerHTML = `<p>${data.vastaus[1]}</p>`;
-                    chatWindow.insertBefore(vastausDiv, keskusteluDiv);
-                    chatWindow.scrollTop = chatWindow.scrollHeight;
-                    console.log(data.vastaus);
-                } else {
-                    alert('Tapahtui virhe: ' + data.message);
-                }
-            })
+            chat();
         });
+    }
+    function chat() {
+        const userMessage = document.getElementById('chatInput').value;
+        if(userMessage === "") {
+            alert("Kirjoita viesti ennen lähettämistä.");
+            return;
+        }
+        onkoChat = true;
+        const sendButton = document.getElementById('sendButton');
+        const keskusteluDiv = document.querySelector('.keskustelu');
+        const viestiDiv = document.createElement('div');
+        viestiDiv.classList.add('viesti', 'kayttajanViesti');
+        viestiDiv.innerHTML = `<p>${userMessage}</p>`;
+        chatWindow.insertBefore(viestiDiv, keskusteluDiv);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        document.getElementById('chatInput').value = '';
+        sendButton.disabled = true;
+        fetch('chat_handler', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({api : valittuAPI, malli : valittuMalli, viesti : userMessage, onkoChattays : true})
+        })
+        .then(response => response.json()) // Parse the JSON from PHP
+        .then(data => {
+            sendButton.disabled = false;
+            onkoChat = false;
+            if(data.status === 'success') {
+                const vastausDiv = document.createElement('div');
+                vastausDiv.classList.add('viesti');
+                vastausDiv.innerHTML = `<p>${data.vastaus[1]}</p>`;
+                chatWindow.insertBefore(vastausDiv, keskusteluDiv);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+                console.log(data.vastaus);
+            } else {
+                //alert('Tapahtui virhe: ' + data.message);
+                const virheDiv = document.createElement('div');
+                virheDiv.classList.add('viesti', 'virheViesti');
+                virheDiv.innerHTML = `<p>Tapahtui virhe: ${data.message}</p>`;
+                chatWindow.insertBefore(virheDiv, keskusteluDiv);
+                console.log(data.message);
+            }
+            })
     }   
 </script>

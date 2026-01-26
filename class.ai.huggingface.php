@@ -37,10 +37,10 @@ class AIHuggingface extends AI {
      */
     public function tekstiHaku2($prompt, $temperature = 0.8, $max_tokens = null)
     {
-        $base64Prompt = str_replace("/", "-", base64_encode($prompt));
+        $promptHash = md5($prompt);
         $parts = explode(':', $this->model);
         $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = 'temp_ai/hf_tekstihaku_' . $base64Prompt . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+        $tiedostonPolku = 'temp_ai/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
         if(file_exists($tiedostonPolku)) {
             $file = fopen($tiedostonPolku, 'r');
             $vastaus = fread($file, filesize($tiedostonPolku));
@@ -103,15 +103,15 @@ class AIHuggingface extends AI {
         }
 
     }
-    function suoritaHaku($arvot, $filePath = null, $temperature = 0.8, $max_tokens = null) {
+    function suoritaHaku($arvot, $filePath = null, $temperature = 0.8, $max_tokens = null, $haetaankoAiempi = true) {
         $prompt = parent::suoritaHaku($arvot);
         try {
             if ($filePath == null) {
-                $base64Prompt = str_replace("/", "-", base64_encode($prompt));
+                $promptHash = md5($prompt);
                 $parts = explode(':', $this->model);
                 $model = str_replace("/", "-", $parts[0]);
-                $tiedostonPolku = 'temp_ai/hf_tekstihaku_' . $base64Prompt . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
-                if(file_exists($tiedostonPolku)) {
+                $tiedostonPolku = 'temp_ai/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+                if(file_exists($tiedostonPolku ) && $haetaankoAiempi ) {
                     $file = fopen($tiedostonPolku, 'r');
                     $vastaus = fread($file, filesize($tiedostonPolku));
                     fclose($file);
@@ -133,27 +133,27 @@ class AIHuggingface extends AI {
                 $file = fopen($tiedostonPolku, 'w');
                 fwrite($file, $vastaus);
                 fclose($file);
-                return [true, $vastaus];
+                return [true, $vastaus, "total_tokens" => $response->usage->totalTokens];
             } else {
                 if (!file_exists($filePath)) {
                     return [false, "Tiedostoa ei löytynyt: " . $filePath];
                 }
                 $mimeType = mime_content_type($filePath);
 
-                $base64Prompt = str_replace("/", "-", base64_encode($prompt));
-                $base64FilePath = str_replace("/", "-", base64_encode($filePath));
+                $promptHash = md5($prompt);
+                $filePathHash = md5($filePath);
                 $parts = explode(':', $this->model);
                 $model = str_replace("/", "-", $parts[0]);
-                $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $base64Prompt . '_' . $base64FilePath . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+                $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
 
-                if(file_exists($tiedostonPolku)) {
+                if(file_exists($tiedostonPolku) && $haetaankoAiempi) {
                     $file = fopen($tiedostonPolku, 'r');
                     $vastaus = fread($file, filesize($tiedostonPolku));
                     fclose($file);
                     //echo "Ladattu välimuistista: " . $tiedostonPolku . "\n";
                     return [true, $vastaus];
                 }
-                if (strpos($mimeType, 'text/') === 0) {
+                if (strpos($mimeType, 'text/') === 0 or strpos($mimeType, 'application/json') === 0) {
                     // Text file: read content and append to prompt
                     $content = file_get_contents($filePath);
                     $prompt = $prompt . "\n\n" . $content;
@@ -181,7 +181,7 @@ class AIHuggingface extends AI {
                 $file = fopen($tiedostonPolku, 'w');
                 fwrite($file, $vastaus);
                 fclose($file);
-                return [true, $vastaus];
+                return [true, $vastaus, "total_tokens" => $response->usage->totalTokens];
             }
         } catch (\GuzzleHttp\Exception\ClientException $e) {
         $statusCode = $e->getResponse()->getStatusCode();
@@ -212,11 +212,11 @@ class AIHuggingface extends AI {
         }
         $mimeType = mime_content_type($filePath);
 
-        $base64Prompt = str_replace("/", "-", base64_encode($prompt));
-        $base64FilePath = str_replace("/", "-", base64_encode($filePath));
+        $promptHash = md5($prompt);
+        $filePathHash = md5($filePath);
         $parts = explode(':', $this->model);
         $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $base64Prompt . '_' . $base64FilePath . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+        $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
 
         if(file_exists($tiedostonPolku)) {
             $file = fopen($tiedostonPolku, 'r');
@@ -273,10 +273,10 @@ class AIHuggingface extends AI {
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
      */
     function strukturoituHaku2($prompt, $jsonSchema, $temperature = 0.0, $max_tokens = null) {
-        $base64Prompt = str_replace("/", "-", base64_encode($prompt));
+        $promptHash = md5($prompt);
         $parts = explode(':', $this->model);
         $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = 'temp_ai/hf_structuredhaku_' . $base64Prompt . '_' . $jsonSchema . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+        $tiedostonPolku = 'temp_ai/hf_structuredhaku_' . $promptHash . '_' . $jsonSchema . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
         if(file_exists($tiedostonPolku)) {
             $file = fopen($tiedostonPolku, 'r');
             $vastaus = fread($file, filesize($tiedostonPolku));
@@ -334,7 +334,9 @@ class AIHuggingface extends AI {
         if ($modelName === null) {
         $modelName = $this->model;
         }
+        $malli = null;
         try {
+            //$malli = !is_null($this->client->models()->retrieve($modelName));
             // Use a minimal prompt to test
             $response = $this->client->chat()->create([
                 'model' => $modelName,
@@ -346,12 +348,12 @@ class AIHuggingface extends AI {
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             $statusCode = $e->getResponse()->getStatusCode();
             if ($statusCode === 404 || $statusCode === 400) {
-                return [false, $e->getMessage()];  // Model/provider not found or invalid
+                return [false, $e->getMessage(), $malli];  // Model/provider not found or invalid
             }
             // Re-throw other errors (e.g., auth/rate limit)
             throw $e;
         } catch (\Throwable $e) {
-            return [false, $e->getMessage()];  // Any other error likely means model doesn't exist
+            return [false, $e->getMessage(), $malli];  // Any other error likely means model doesn't exist
         }
     }
 }

@@ -11,40 +11,53 @@ $pyynto = $data['pyynto'] ?? null;
 if($pyynto == 1) { //Testataan onko mallia olemassa
     $api = $data['api'];
     $malli = $data['malli'];
-    $_SESSION['chat_history_id'] = uniqid();
-    $_SESSION['chat_history'][$_SESSION['chat_history_id']] = [];
+    $chat_history_id = uniqid();
+    $_SESSION['chat_history'][$chat_history_id] = [];
     if($api === "Gemini") {
         $AIGemini = new AIGemini(getenv('GEMINI_API_KEY'), $malli);
         $tulos = $AIGemini->modelExists();
         if($tulos[0]) {
-            echo json_encode(['status' => 'success', 'message' => 'Malli löytyy ja toimii.']);
+            echo json_encode(['status' => 'success', 'message' => 'Malli löytyy ja toimii.', 'id' => $chat_history_id ]);
         }
         else {
-            echo json_encode(['status' => 'error', 'message' => 'Error: ' . $tulos[1] . " Malli: "]);
+            if($tulos[2]) {
+                $error = 1; //Malli löytyi
+            } else {
+                $error = 0; //Malli ei löytynyt
+            }
+            echo json_encode(['status' => 'error', 'error' => $error, 'message' => 'Error: ' . $tulos[1]]);
         }
     } else if ($api === "Hugging Face") {
         $Aihuggingface = new AIHuggingface(getenv('HF_TOKEN'), $malli);
         $tulos = $Aihuggingface->modelExists();
         if($tulos[0]) {
-            echo json_encode(['status' => 'success', 'message' => 'Malli löytyy.']);
+            echo json_encode(['status' => 'success', 'message' => 'Malli löytyy ja toimii.', 'id' => $chat_history_id ]);
         }
         else {
-            echo json_encode(['status' => 'error', 'message' => 'Error: ' . $tulos[1]]);
+            echo json_encode(['status' => 'error', 'message' => 'Error: ' . $tulos[1] . " Asia " . $tulos[2]]);
         }
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Tuntematon API-valinta.']);
     }
+} else if ($pyynto === 2) { //Haetaan chat-historia
+    $chatti_id = $data['chatti_id'];
+    if(isset($_SESSION['chat_history'][$chatti_id])) {
+        echo json_encode(['status' => 'success', 'chat_history' => $_SESSION['chat_history'][$chatti_id]]);
+        exit();
+    }
+    echo json_encode(['status' => 'error', 'message' => 'Chatti-id ei löydy istunnosta.']);
 } else { //Käsitellään käyttäjän viesti
     $api = $data['api'];
     $malli = $data['malli'];
     $viesti = $data['viesti']; //Jatkokehitysideaksi mallin, apin ja muiden asetusten välimuistutus
     $onkoChattays = $data['onkoChattays'] ?? false;
+    $chatti_id = $data['chatti_id'] ?? null;
     if($api === "Gemini") {
         $AIGemini = new AIGemini(getenv('GEMINI_API_KEY'), $malli);
         if($onkoChattays) {
-            $vastaus = $AIGemini->chattays([$viesti], $_SESSION['chat_history'][$_SESSION['chat_history_id']]);
+            $vastaus = $AIGemini->chattays([$viesti], $_SESSION['chat_history'][$chatti_id]);
             if(count($vastaus) > 2) {
-                $_SESSION['chat_history'][$_SESSION['chat_history_id']] = array_merge($_SESSION['chat_history'][$_SESSION['chat_history_id']], $vastaus[2]);
+                $_SESSION['chat_history'][$chatti_id] = array_merge($_SESSION['chat_history'][$chatti_id], $vastaus[2]);
                 unset($vastaus[2]);
             }
         } else {
@@ -58,9 +71,9 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
     } else if ($api === "Hugging Face") {
         $Aihuggingface = new AIHuggingface(getenv('HF_TOKEN'), $malli);
         if ($onkoChattays) {
-            $vastaus = $Aihuggingface->chattays([$viesti], $_SESSION['chat_history'][$_SESSION['chat_history_id']]);
+            $vastaus = $Aihuggingface->chattays([$viesti], $_SESSION['chat_history'][$chatti_id]);
             if(count($vastaus) > 2) {
-                $_SESSION['chat_history'][$_SESSION['chat_history_id']] = $vastaus[2];
+                $_SESSION['chat_history'][$chatti_id] = $vastaus[2];
                 unset($vastaus[2]);
             }
         } else {

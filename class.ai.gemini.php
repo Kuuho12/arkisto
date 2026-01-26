@@ -8,6 +8,8 @@ use Gemini\Enums\DataType;
 use Gemini\Enums\ResponseMimeType;
 use Gemini\Data\Content;
 use Gemini\Enums\Role;
+use Gemini\Enums\FileState;
+use Gemini\Data\UploadedFile;
 class AIGemini extends AI {
     private $mimeTypes = array(
         "image/png" => MimeType::IMAGE_PNG,
@@ -16,6 +18,7 @@ class AIGemini extends AI {
         "image/webp" => MimeType::IMAGE_WEBP,
         "application/json" => MimeType::APPLICATION_JSON,
         "text/csv" => MimeType::TEXT_CSV,
+        "text/plain" => MimeType::TEXT_PLAIN,
         "video/mp4" => MimeType::VIDEO_MP4
     ); 
     public $structured_configs;
@@ -99,13 +102,15 @@ class AIGemini extends AI {
                     ->generativeModel(model: $this->model)
                     ->generateContent($prompt);
                 $vastaus = $result->text();
-                return [true, $vastaus];
+                $totalTokes = $result->usageMetadata->totalTokenCount;
+                return [true, $vastaus, "total_tokens" => $totalTokes];
             } else {
                 $result = $this->client
                     ->generativeModel(model: $this->model)
                     ->generateContent($prompt);
                 $vastaus = $result->text();
-                return [true, $vastaus];
+                $totalTokes = $result->usageMetadata->totalTokenCount;
+                return [true, $vastaus, "total_tokens" => $totalTokes];
             }
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             $statusCode = $e->getResponse()->getStatusCode();
@@ -151,6 +156,74 @@ class AIGemini extends AI {
             ->generateContent($prompt);
             $vastaus = $result->text();
             return [true, $vastaus];
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        $statusCode = $e->getResponse()->getStatusCode();
+        if ($statusCode === 429) {
+            return [false, "Rate limit exceeded. Please try again later."];
+        }
+        return [false, "HTTP Error $statusCode: " . $e->getMessage()];
+        } catch (\Exception $e) {
+            return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
+        }
+    }
+    function filesApiLisaaTiedosto($tiedosto) {
+        if(!file_exists($tiedosto)) {
+            return [false, "Tiedostoa ei löydy: " . $tiedosto];
+        }
+        $fileSuffix = pathinfo($tiedosto, PATHINFO_EXTENSION);
+        if($fileSuffix === "txt") {
+            $mime_type = "text/plain";
+        }
+        else {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime_type = finfo_file($finfo, $tiedosto);
+        }
+        if (in_array($mime_type, array_keys($this->mimeTypes))) {
+            $geminiMimeType = $this->mimeTypes[$mime_type];
+        } 
+        else {
+            return [false, "Epätuettu tiedostomuoto: " . $mime_type];
+        }
+        $files = $this->client->files();
+        $file = $files->upload(
+            filename: $tiedosto,
+            mimeType: $geminiMimeType,
+            displayName: pathinfo($tiedosto, PATHINFO_FILENAME)
+        );
+        do {
+        sleep(2);
+        $meta = $files->metadataGet($file->uri);
+        } while (!$meta->state->complete());
+
+        if ($meta->state == FileState::Failed) { 
+            return [false, "Tiedoston lataus epäonnistui: " . $meta->error->message];
+        } else {
+            return [true, $file];
+        }
+    }
+    function filesApiHaku($prompt, $file) { //Ei toimi
+        $prompt = parent::suoritaHaku($prompt);
+        try {
+            $mime_type = $file->mimeType;
+            if (in_array($mime_type, array_keys($this->mimeTypes))) {
+                $geminiMimeType = $this->mimeTypes[$mime_type];
+            } 
+            else {
+                return [false, "Epätuettu tiedostomuoto: " . $mime_type];
+            }
+            $uploadedFile = new UploadedFile(
+                fileUri: $file->uri,
+                mimeType: $geminiMimeType  // or detect from the file object
+            );
+            $result = $this->client
+            ->generativeModel(model: $this->model)
+            ->generateContent([
+                $prompt,
+                $uploadedFile
+            ]);
+            $vastaus = $result->text();
+            $totalTokes = $result->usageMetadata->totalTokenCount;
+            return [true, $vastaus, "total_tokens" => $totalTokes];
         } catch (\GuzzleHttp\Exception\ClientException $e) {
         $statusCode = $e->getResponse()->getStatusCode();
         if ($statusCode === 429) {
@@ -272,6 +345,47 @@ class AIGemini extends AI {
             throw $e;
         } catch (\Exception $e) {
             return [false, $e->getMessage(), $malli];  // Any other error likely means model doesn't exist
+        }
+    }
+    function laskeTokenit($arvot) {
+        $prompt = parent::suoritaHaku($arvot);
+        try {
+            if(count($this->files) > 0) {
+                $prompt = [$prompt];
+                foreach ($this->files as $tiedosto) {
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $mime_type = finfo_file($finfo, $tiedosto);
+                    if (in_array($mime_type, array_keys($this->mimeTypes))) {
+                        $geminiMimeType = $this->mimeTypes[$mime_type];
+                    } 
+                    else {
+                        return [false, "Epätuettu tiedostomuoto: " . $mime_type];
+                    }
+                    $prompt[] = new Blob(
+                    mimeType: $geminiMimeType,
+                    data: base64_encode(
+                        file_get_contents($tiedosto)
+                    )
+                    );
+                }
+                $result = $this->client
+                    ->generativeModel(model: $this->model)
+                    ->countTokens($prompt);
+                $vastaus = $result->totalTokens;
+                return [true, $vastaus];
+            } else {
+                $result = $this->client
+                    ->generativeModel(model: $this->model)
+                    ->countTokens($prompt);
+                $vastaus = $result->totalTokens;
+                return [true, $vastaus];
+            }
+        }
+        catch (\GuzzleHttp\Exception\ClientException $e) {
+            $statusCode = $e->getResponse()->getStatusCode();
+            return [false, "HTTP Error $statusCode: " . $e->getMessage()];
+        } catch (\Exception $e) {
+        return [false, "Error: " . $e->getMessage()];
         }
     }
 }

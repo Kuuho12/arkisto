@@ -74,6 +74,7 @@
             malliValinta();
         });
     }
+    let chatti_id = null;
     function malliValinta() {
         vastausDiv = document.querySelector('.vastaus');
         valittuMalli = document.getElementById('malliInput').value;
@@ -93,6 +94,7 @@
         .then(response => response.json()) // Parse the JSON from PHP
         .then(data => {
             if(data.status === 'success') {
+                chatti_id = data.id;
                 const viestiDiv = document.createElement('div');
                 viestiDiv.classList.add('viesti', 'kayttajanViesti');
                 viestiDiv.innerHTML = `<p>Valitsit mallin: ${valittuMalli}</p>`;
@@ -105,8 +107,17 @@
                 chatWindow.scrollTop = chatWindow.scrollHeight;
                 aiKeskustelu();
             } else {
+                if(data.error !== undefined) {
+                    if(data.error === 1) {
+                        alert('Mallin käyttö ei syystä tai toisesta onnistunut.');
+                    } else {
+                        alert('Mallia ei löytynyt. Valitse toinen malli.');
+                    }
+                } else {
                 alert('Mallia ei löydy tai se ei toimi juuri nyt. Valitse toinen malli.');
+                }
                 console.log(data.message);
+                onkoMalliValinta = false;
                 buttonElement.disabled = false;
                 return;
             }
@@ -155,7 +166,7 @@
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({api : valittuAPI, malli : valittuMalli, viesti : userMessage, onkoChattays : true})
+            body: JSON.stringify({api : valittuAPI, malli : valittuMalli, viesti : userMessage, onkoChattays : true, chatti_id : chatti_id})
         })
         .then(response => response.json()) // Parse the JSON from PHP
         .then(data => {
@@ -172,7 +183,7 @@
                 //alert('Tapahtui virhe: ' + data.message);
                 const virheDiv = document.createElement('div');
                 virheDiv.classList.add('viesti', 'virheViesti');
-                virheDiv.innerHTML = `<p>Tapahtui virhe: ${data.message}</p>`;
+                virheDiv.innerHTML = `<p>${data.message}</p>`;
                 chatWindow.insertBefore(virheDiv, keskusteluDiv);
                 console.log(data.message);
             }

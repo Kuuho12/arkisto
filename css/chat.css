@@ -62,7 +62,7 @@
     background-color: lightblue; 
     align-self: flex-end; 
 }
-.vaihtoehdot, .vastaus {
+.vaihtoehdot {
     width: fit-content;
     margin: 7.5px auto !important;
     /*display: flex;
@@ -89,6 +89,9 @@
 .vastaus .keskustelu {
     align-items: center;
     justify-items: center;
+}
+#malliInput {
+    width: 60%;
 }
 #chatInput {
     width: 60%; 

@@ -18,6 +18,7 @@ class AIGemini extends AI {
         "image/webp" => MimeType::IMAGE_WEBP,
         "application/json" => MimeType::APPLICATION_JSON,
         "text/csv" => MimeType::TEXT_CSV,
+        "text/html" => MimeType::TEXT_HTML,
         "text/plain" => MimeType::TEXT_PLAIN,
         "video/mp4" => MimeType::VIDEO_MP4
     ); 

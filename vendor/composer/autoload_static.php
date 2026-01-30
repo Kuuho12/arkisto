@@ -15,6 +15,10 @@ class ComposerStaticInit4bf8775c47286884a5037299a422277d
     );
 
     public static $prefixLengthsPsr4 = array (
+        'c' =>
+        array (
+            'cebe\\markdown\\' => 14,
+        ),
         'P' =>
         array (
             'Psr\\Http\\Message\\' => 17,
@@ -39,6 +43,10 @@ class ComposerStaticInit4bf8775c47286884a5037299a422277d
     );
 
     public static $prefixDirsPsr4 = array (
+        'cebe\\markdown\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/cebe/markdown',
+        ),
         'Psr\\Http\\Message\\' =>
         array (
             0 => __DIR__ . '/..' . '/psr/http-factory/src',

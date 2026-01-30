@@ -175,7 +175,8 @@
             if(data.status === 'success') {
                 const vastausDiv = document.createElement('div');
                 vastausDiv.classList.add('viesti');
-                vastausDiv.innerHTML = `<p>${data.vastaus[1]}</p>`;
+                vastausDiv.innerHTML = data.vastaus;
+                //vastausDiv.innerHTML = `<p>${data.vastaus[1]}</p>`;
                 chatWindow.insertBefore(vastausDiv, keskusteluDiv);
                 chatWindow.scrollTop = chatWindow.scrollHeight;
                 console.log(data.vastaus);

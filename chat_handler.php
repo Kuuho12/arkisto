@@ -52,6 +52,9 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
     $viesti = $data['viesti']; //Jatkokehitysideaksi mallin, apin ja muiden asetusten välimuistutus
     $onkoChattays = $data['onkoChattays'] ?? false;
     $chatti_id = $data['chatti_id'] ?? null;
+    $parser = new \cebe\markdown\GithubMarkdown();
+    //$parser = new \cebe\markdown\Markdown();
+    $parser->html5 = true;
     if($api === "Gemini") {
         $AIGemini = new AIGemini(getenv('GEMINI_API_KEY'), $malli);
         if($onkoChattays) {
@@ -67,7 +70,11 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
             echo json_encode(['status' => 'error', 'message' => $vastaus[1]]);
             exit;
         }
-        echo json_encode(['status' => 'success', 'vastaus' => $vastaus]);
+        $markdownToHtml = $parser->parse($vastaus[1]);
+        $vastausFile = fopen("temp_ai/gemini_". $chatti_id . "_" . count($_SESSION['chat_history'][$chatti_id])  . ".txt", 'w');
+        fwrite($vastausFile, $vastaus[1]);
+        fclose($vastausFile);
+        echo json_encode(['status' => 'success', 'vastaus' => $markdownToHtml]);
     } else if ($api === "Hugging Face") {
         $Aihuggingface = new AIHuggingface(getenv('HF_TOKEN'), $malli);
         if ($onkoChattays) {
@@ -83,7 +90,8 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
             echo json_encode(['status' => 'error', 'message' => $vastaus[1]]);
             exit;
         }
-        echo json_encode(['status' => 'success', 'vastaus' => $vastaus]);
+        $markdownToHtml = $parser->parse($vastaus[1]);
+        echo json_encode(['status' => 'success', 'vastaus' => $markdownToHtml]);
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Tuntematon API-valinta.']);
     }

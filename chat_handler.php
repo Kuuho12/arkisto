@@ -47,53 +47,57 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
     }
     echo json_encode(['status' => 'error', 'message' => 'Chatti-id ei löydy istunnosta.']);
 } else { //Käsitellään käyttäjän viesti
-    $api = $data['api'];
-    $malli = $data['malli'];
-    $viesti = $data['viesti']; //Jatkokehitysideaksi mallin, apin ja muiden asetusten välimuistutus
-    $onkoChattays = $data['onkoChattays'] ?? false;
-    $chatti_id = $data['chatti_id'] ?? null;
-    $parser = new \cebe\markdown\GithubMarkdown();
-    //$parser = new \cebe\markdown\Markdown();
-    $parser->html5 = true;
-    if($api === "Gemini") {
-        $AIGemini = new AIGemini(getenv('GEMINI_API_KEY'), $malli);
-        if($onkoChattays) {
-            $vastaus = $AIGemini->chattays([$viesti], $_SESSION['chat_history'][$chatti_id]);
-            if(count($vastaus) > 2) {
-                $_SESSION['chat_history'][$chatti_id] = array_merge($_SESSION['chat_history'][$chatti_id], $vastaus[2]);
-                unset($vastaus[2]);
+    try {
+        $api = $data['api'];
+        $malli = $data['malli'];
+        $viesti = $data['viesti']; //Jatkokehitysideaksi mallin, apin ja muiden asetusten välimuistutus
+        $onkoChattays = $data['onkoChattays'] ?? false;
+        $chatti_id = $data['chatti_id'] ?? null;
+        $parser = new \cebe\markdown\GithubMarkdown();
+        //$parser = new \cebe\markdown\Markdown();
+        $parser->html5 = true;
+        if($api === "Gemini") {
+            $AIGemini = new AIGemini(getenv('GEMINI_API_KEY'), $malli);
+            if($onkoChattays) {
+                $vastaus = $AIGemini->chattays([$viesti], $_SESSION['chat_history'][$chatti_id]);
+                if(count($vastaus) > 2) {
+                    $_SESSION['chat_history'][$chatti_id] = array_merge($_SESSION['chat_history'][$chatti_id], $vastaus[2]);
+                    unset($vastaus[2]);
+                }
+            } else {
+                $vastaus = $AIGemini->suoritaHaku([$viesti]);
             }
-        } else {
-            $vastaus = $AIGemini->suoritaHaku([$viesti]);
-        }
-        if($vastaus[0] === false) {
-            echo json_encode(['status' => 'error', 'message' => $vastaus[1]]);
-            exit;
-        }
-        $markdownToHtml = $parser->parse($vastaus[1]);
-        $vastausFile = fopen("temp_ai/gemini_". $chatti_id . "_" . count($_SESSION['chat_history'][$chatti_id])  . ".txt", 'w');
-        fwrite($vastausFile, $vastaus[1]);
-        fclose($vastausFile);
-        echo json_encode(['status' => 'success', 'vastaus' => $markdownToHtml]);
-    } else if ($api === "Hugging Face") {
-        $Aihuggingface = new AIHuggingface(getenv('HF_TOKEN'), $malli);
-        if ($onkoChattays) {
-            $vastaus = $Aihuggingface->chattays([$viesti], $_SESSION['chat_history'][$chatti_id]);
-            if(count($vastaus) > 2) {
-                $_SESSION['chat_history'][$chatti_id] = $vastaus[2];
-                unset($vastaus[2]);
+            if($vastaus[0] === false) {
+                echo json_encode(['status' => 'error', 'message' => $vastaus[1]]);
+                exit;
             }
+            $markdownToHtml = gemtextToHtml($vastaus[1]);
+            $vastausFile = fopen("temp_ai/gemini_". $chatti_id . "_" . count($_SESSION['chat_history'][$chatti_id])  . ".txt", 'w');
+            fwrite($vastausFile, $vastaus[1]);
+            fclose($vastausFile);
+            echo json_encode(['status' => 'success', 'vastaus' => $markdownToHtml]);
+        } else if ($api === "Hugging Face") {
+            $Aihuggingface = new AIHuggingface(getenv('HF_TOKEN'), $malli);
+            if ($onkoChattays) {
+                $vastaus = $Aihuggingface->chattays([$viesti], $_SESSION['chat_history'][$chatti_id]);
+                if(count($vastaus) > 2) {
+                    $_SESSION['chat_history'][$chatti_id] = $vastaus[2];
+                    unset($vastaus[2]);
+                }
+            } else {
+                $vastaus = $Aihuggingface->suoritaHaku([$viesti]);
+            }
+            if($vastaus[0] === false) {
+                echo json_encode(['status' => 'error', 'message' => $vastaus[1]]);
+                exit;
+            }
+            $markdownToHtml = $parser->parse($vastaus[1]);
+            echo json_encode(['status' => 'success', 'vastaus' => $markdownToHtml]);
         } else {
-            $vastaus = $Aihuggingface->suoritaHaku([$viesti]);
+            echo json_encode(['status' => 'error', 'message' => 'Tuntematon API-valinta.']);
         }
-        if($vastaus[0] === false) {
-            echo json_encode(['status' => 'error', 'message' => $vastaus[1]]);
-            exit;
-        }
-        $markdownToHtml = $parser->parse($vastaus[1]);
-        echo json_encode(['status' => 'success', 'vastaus' => $markdownToHtml]);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Tuntematon API-valinta.']);
+    } catch (Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
     }
 }
 /*$GeminiMallit = [

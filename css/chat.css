@@ -59,10 +59,16 @@ strong {
     margin: 7.5px 7.5px;
     max-width: 396px;
 }
-#chatWindow pre, #chatWindow code {
+#chatWindow table {
+    display: block;
+    overflow-x: auto;
+}
+#chatWindow pre code {
+    display: block;
     line-height: 1.75em;
     padding: 0.1em 0.5em;
     overflow-x: auto;
+    max-width: 380px;
 }
 #chatWindow pre {
     display: block;
@@ -84,7 +90,7 @@ strong {
     width: fit-content;
 }
 .viesti * {
-    max-width: 396px;
+    max-width: 394px;
 }
 .kayttajanViesti {
     background-color: lightblue; 

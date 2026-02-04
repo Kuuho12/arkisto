@@ -390,4 +390,473 @@ class AIGemini extends AI {
         }
     }
 }
+
+function applyInlineFormatting(string $text): string
+{
+    // Then escape HTML special characters for the rest of the text
+    $text = htmlspecialchars($text, ENT_SUBSTITUTE, 'UTF-8');
+
+    // Replace `text` with <code>code</code>
+    $text = preg_replace('/`(.+?)`/', '<code>$1</code>', $text);
+
+    // Replace [link text](url) or [link text](url 'title') with <a> tags BEFORE general escaping
+    $text = preg_replace_callback('/\[(.+?)\]\(([^)]+)\)/', function($matches) {
+        $linkText = htmlspecialchars($matches[1], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $urlAndTitle = $matches[2];
+        
+        // Parse URL and optional title
+        if (preg_match('/^(\S+)(?:\s+["\'](.+?)["\'])?$/', $urlAndTitle, $parts)) {
+            $url = htmlspecialchars($parts[1], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $title = $parts[2] ?? '';
+            $titleAttr = !empty($title) ? ' title="' . htmlspecialchars($title, ENT_QUOTES) . '"' : '';
+            return '<a href="' . $url . '"' . $titleAttr . '>' . $linkText . '</a>';
+        }
+        
+        return htmlspecialchars($matches[0], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }, $text);
+    
+    // Replace __double underscores__ with <strong>bold</strong>
+    $text = preg_replace('/__(.+?)__/', '<strong>$1</strong>', $text);
+    
+    // Replace _single underscores_ with <em>italic</em>
+    $text = preg_replace('/(?<!_)_(?!_)(.+?)(?<!_)_(?!_)/', '<em>$1</em>', $text);
+    
+    // Replace **bold** with <strong>bold</strong>
+    $text = preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $text);
+    
+    // Replace *italic* with <em>italic</em> (but not already processed bold)
+    $text = preg_replace('/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/', '<em>$1</em>', $text);
+
+    // Replace ~text~ with <s>strikethrough</s>
+    $text = preg_replace('/~(.+?)~/', '<s>$1</s>', $text);
+    
+    return $text;
+}
+
+/**
+ * Parses a markdown table from an array of lines starting at a given index
+ * Returns array [html, newIndex] where newIndex is the line after the table
+ */
+function parseMarkdownTable(array &$lines, int $startIndex): array
+{
+    if ($startIndex >= count($lines)) {
+        return ['', $startIndex];
+    }
+
+    // Check if first line is a table row
+    $headerLine = $lines[$startIndex];
+    if (!preg_match('/^\|/', $headerLine)) {
+        return ['', $startIndex];
+    }
+
+    // Parse header row
+    $headerCells = array_filter(array_map('trim', explode('|', $headerLine)), fn($v) => $v !== '');
+    if (empty($headerCells)) {
+        return ['', $startIndex];
+    }
+
+    // Check for separator line
+    if ($startIndex + 1 >= count($lines)) {
+        return ['', $startIndex];
+    }
+
+    $separatorLine = $lines[$startIndex + 1];
+    if (!preg_match('/^\|/', $separatorLine)) {
+        return ['', $startIndex];
+    }
+
+    $separatorCells = array_filter(array_map('trim', explode('|', $separatorLine)), fn($v) => $v !== '');
+    
+    // Verify separator line has valid markdown table separators
+    $alignments = [];
+    foreach ($separatorCells as $cell) {
+        if (!preg_match('/^:?-+:?$/', $cell)) {
+            return ['', $startIndex];
+        }
+        
+        // Determine alignment
+        $hasLeft = str_starts_with($cell, ':');
+        $hasRight = str_ends_with($cell, ':');
+        
+        if ($hasLeft && $hasRight) {
+            $alignments[] = 'center';
+        } elseif ($hasRight) {
+            $alignments[] = 'right';
+        } elseif ($hasLeft) {
+            $alignments[] = 'left';
+        } else {
+            $alignments[] = '';
+        }
+    }
+
+    // Must have same number of columns in header and separator
+    if (count($headerCells) !== count($separatorCells)) {
+        return ['', $startIndex];
+    }
+
+    $html = "<table>\n<thead>\n<tr>\n";
+    
+    // Add header cells
+    foreach ($headerCells as $i => $cell) {
+        $align = $alignments[$i] ? ' style="text-align:' . $alignments[$i] . '"' : '';
+        $cellContent = applyInlineFormatting($cell);
+        $html .= "<th{$align}>{$cellContent}</th>\n";
+    }
+    
+    $html .= "</tr>\n</thead>\n<tbody>\n";
+
+    // Parse body rows
+    $currentIndex = $startIndex + 2;
+    while ($currentIndex < count($lines)) {
+        $line = $lines[$currentIndex];
+        
+        if (!preg_match('/^\|/', $line)) {
+            break;
+        }
+
+        $cells = array_filter(array_map('trim', explode('|', $line)), fn($v) => $v !== '');
+        
+        // Row must have same number of cells as header
+        if (count($cells) !== count($headerCells)) {
+            break;
+        }
+
+        $html .= "<tr>\n";
+        foreach ($cells as $i => $cell) {
+            $align = $alignments[$i] ? ' style="text-align:' . $alignments[$i] . '"' : '';
+            $cellContent = applyInlineFormatting($cell);
+            $html .= "<td{$align}>{$cellContent}</td>\n";
+        }
+        $html .= "</tr>\n";
+
+        $currentIndex++;
+    }
+
+    $html .= "</tbody>\n</table>\n";
+    
+    return [$html, $currentIndex];
+}
+
+function gemtextToHtml(string $input): string
+{
+    $lines = preg_split('/\r\n|\r|\n/', $input);
+    $html = '';
+
+    $inPre = 0;
+    $listStack = []; // Stack of list types at each nesting level
+    $blockquoteStack = []; // Stack for nested blockquotes
+    $spacesPerIndent = 3; // Number of spaces per indent level
+
+    $i = 0;
+    while ($i < count($lines)) {
+        $rawLine = $lines[$i];
+
+        // Preformatted block ```
+        if (trim($rawLine) === '```') {
+            // Close all open lists before pre block
+            while (!empty($listStack)) {
+                $listType = array_pop($listStack);
+                $html .= "</{$listType}>\n";
+            }
+            while (!empty($blockquoteStack)) {
+                array_pop($blockquoteStack);
+                $html .= "</blockquote>\n";
+            }
+
+            if ($inPre === 0) {
+                $html .= "<pre><code>";
+                $inPre++;
+            } else {
+                $inPre--;
+                if ($inPre === 0) {
+                    $html .= "</code></pre>\n";
+                } else {
+                    $html .= htmlspecialchars($rawLine, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "\n";
+                }
+            }
+
+            $i++;
+            continue;
+        }
+
+        // Preformatted block ``` + text
+        if (strpos(trim($rawLine), '```') === 0) {
+            // Close all open lists before pre block
+            while (!empty($listStack)) {
+                $listType = array_pop($listStack);
+                $html .= "</{$listType}>\n";
+            }
+            while (!empty($blockquoteStack)) {
+                array_pop($blockquoteStack);
+                $html .= "</blockquote>\n";
+            }
+
+            $inPre++;
+            if ($inPre === 1) {
+                $html .= "<pre><code>";
+            } else {
+                $html .= htmlspecialchars($rawLine, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "\n";
+            }
+
+            $i++;
+            continue;
+        }
+
+        // Inside <pre> - preserve whitespace
+        if ($inPre > 0) {
+            $html .= htmlspecialchars($rawLine, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "\n";
+            $i++;
+            continue;
+        }
+
+        // Empty line
+        if (trim($rawLine) === '') {
+            // Close all open lists on empty line
+            /*while (!empty($listStack)) {
+                $listType = array_pop($listStack);
+                $html .= "</{$listType}>\n";
+            }*/
+            // Close all blockquotes on empty line
+            while (!empty($blockquoteStack)) {
+                array_pop($blockquoteStack);
+                $html .= "</blockquote>\n";
+            }
+            $i++;
+            continue;
+        }
+
+        // Markdown tables
+        if (preg_match('/^\|/', $rawLine)) {
+            // Close all open lists before table
+            while (!empty($listStack)) {
+                $listType = array_pop($listStack);
+                $html .= "</{$listType}>\n";
+            }
+            // Close all blockquotes before table
+            while (!empty($blockquoteStack)) {
+                array_pop($blockquoteStack);
+                $html .= "</blockquote>\n";
+            }
+            
+            list($tableHtml, $i) = parseMarkdownTable($lines, $i);
+            $html .= $tableHtml;
+            continue;
+        }
+
+        // Blockquotes > or > > or > > >
+        if (preg_match('/^((?:>\s*)+)(.*)$/', trim($rawLine), $m)) {
+            // Close all open lists before blockquote
+            while (!empty($listStack)) {
+                $listType = array_pop($listStack);
+                $html .= "</{$listType}>\n";
+            }
+            
+            // Count the nesting level of blockquotes
+            $blockquoteMarks = $m[1];
+            $blockquoteLevel = substr_count($blockquoteMarks, '>');
+            $blockquoteText = trim($m[2]);
+            
+            // Close blockquotes that are deeper than current level
+            while (count($blockquoteStack) > $blockquoteLevel) {
+                array_pop($blockquoteStack);
+                $html .= "</blockquote>\n";
+            }
+            
+            // Open new blockquotes until we reach target level
+            while (count($blockquoteStack) < $blockquoteLevel) {
+                $html .= "<blockquote>\n";
+                $blockquoteStack[] = 'blockquote';
+            }
+            
+            $text = applyInlineFormatting($blockquoteText);
+            $html .= "<p>{$text}</p>\n";
+            $i++;
+            continue;
+        }
+
+        // Headings # ## ###
+        if (preg_match('/^(#{1,4})\s*(.+)$/', $rawLine, $m)) {
+            // Close all open lists before heading
+            while (!empty($listStack)) {
+                $listType = array_pop($listStack);
+                $html .= "</{$listType}>\n";
+            }
+            // Close all blockquotes before heading
+            while (!empty($blockquoteStack)) {
+                array_pop($blockquoteStack);
+                $html .= "</blockquote>\n";
+            }
+
+            $level = strlen($m[1]);
+            $text = applyInlineFormatting($m[2]);
+
+            $html .= "<h{$level}>{$text}</h{$level}>\n";
+            $i++;
+            continue;
+        }
+
+        // Horizontal rule *** --- ___
+        if(trim($rawLine) === '***' || trim($rawLine) === '---' || trim($rawLine) === '___') {
+            // Close all open lists before horizontal rule
+            while (!empty($listStack)) {
+                $listType = array_pop($listStack);
+                $html .= "</{$listType}>\n";
+            }
+            // Close all blockquotes before horizontal rule
+            while (!empty($blockquoteStack)) {
+                array_pop($blockquoteStack);
+                $html .= "</blockquote>\n";
+            }
+
+            $html .= "<hr />\n";
+            continue;
+        }
+
+        // Links => url text
+        if (preg_match('/^=>\s+(\S+)(?:\s+(.*))?$/', $rawLine, $m)) {
+            // Close all open lists before link
+            while (!empty($listStack)) {
+                $listType = array_pop($listStack);
+                $html .= "</{$listType}>\n";
+            }
+            // Close all blockquotes before link
+            while (!empty($blockquoteStack)) {
+                array_pop($blockquoteStack);
+                $html .= "</blockquote>\n";
+            }
+
+            $url = $m[1];
+            $text = $m[2] ?? $m[1];
+
+            $href = htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $textEsc = applyInlineFormatting($text);
+
+            $html .= "<p><a href=\"{$href}\">{$textEsc}</a></p>\n";
+            $i++;
+            continue;
+        }
+
+        // Ordered list item (1. 2. 3. etc)
+        if (preg_match('/^(\s*)(\d+\.\s+)(.+)$/', $rawLine, $m)) {
+            // Close all blockquotes before list
+            while (!empty($blockquoteStack)) {
+                array_pop($blockquoteStack);
+                $html .= "</blockquote>\n";
+            }
+            
+            $indent = strlen($m[1]);
+            $item = applyInlineFormatting($m[3]);
+
+            if(count($listStack) === 1 && $indent != 0) {
+                $spacesPerIndent = $indent; // Adjust spaces per indent based on first nested list
+            }
+            // Adjust nesting level
+            $nestLevel = intval($indent / $spacesPerIndent); // 0, 1, 2, 3... based on spaces. tab = 4 spaces,
+            
+            // Close lists that are deeper than current level
+            while (count($listStack) > $nestLevel + 1) {
+                $listType = array_pop($listStack);
+                $html .= "</{$listType}>\n";
+            }
+
+            // Open new lists until we reach target nesting level
+            while (count($listStack) <= $nestLevel) {
+                $html .= "<ol>\n";
+                $listStack[] = 'ol';
+            }
+
+            if($listStack[count($listStack) - 1] !== 'ol') {
+                // Close the last opened list if it's not ol
+                $listType = array_pop($listStack);
+                $html .= "</{$listType}>\n";
+                // Open a new ol
+                $html .= "<ol>\n";
+                $listStack[] = 'ol';
+            }
+
+            $html .= "<li>{$item}</li>\n";
+            $i++;
+            continue;
+        }
+
+        // Unordered list item * or -
+        if (preg_match('/^(\s*)([\*\-]\s+)(.+)$/', $rawLine, $m)) {
+            // Close all blockquotes before list
+            while (!empty($blockquoteStack)) {
+                array_pop($blockquoteStack);
+                $html .= "</blockquote>\n";
+            }
+            
+            $indent = strlen($m[1]);
+            $item = applyInlineFormatting($m[3]);
+
+            if(count($listStack) === 1 && $indent != 0) {
+                $spacesPerIndent = $indent; // Adjust spaces per indent based on first nested list
+            }
+            // Adjust nesting level
+            $nestLevel = intval($indent / $spacesPerIndent); // 0, 1, 2, 3... based on spaces
+
+            // Close lists that are deeper than current level
+            while (count($listStack) > $nestLevel + 1) {
+                $listType = array_pop($listStack);
+                $html .= "</{$listType}>\n";
+            }
+
+            // Open new lists until we reach target nesting level
+            while (count($listStack) <= $nestLevel) {
+                $html .= "<ul>\n";
+                $listStack[] = 'ul';
+            }
+
+            if($listStack[count($listStack) - 1] !== 'ul') {
+                // Close the last opened list if it's not ul
+                $listType = array_pop($listStack);
+                $html .= "</{$listType}>\n";
+                // Open a new ul
+                $html .= "<ul>\n";
+                $listStack[] = 'ul';
+            }
+
+            $html .= "<li>{$item}</li>\n";
+            $i++;
+            continue;
+        }
+
+        // Normal paragraph
+        // Close all open lists before paragraph
+        while (!empty($listStack)) {
+            $listType = array_pop($listStack);
+            $html .= "</{$listType}>\n";
+        }
+        // Close all blockquotes before paragraph
+        while (!empty($blockquoteStack)) {
+            array_pop($blockquoteStack);
+            $html .= "</blockquote>\n";
+        }
+
+        $text = applyInlineFormatting(rtrim($rawLine));
+        $html .= "<p>{$text}</p>\n";
+        $i++;
+    }
+
+    // Close all remaining open lists
+    while (!empty($listStack)) {
+        $listType = array_pop($listStack);
+        $html .= "</{$listType}>\n";
+    }
+
+    // Close all remaining open blockquotes
+    while (!empty($blockquoteStack)) {
+        array_pop($blockquoteStack);
+        $html .= "</blockquote>\n";
+    }
+
+    // Close open pre
+    if ($inPre > 0) {
+        $html .= "</code></pre>\n";
+    }
+
+    return $html;
+}
+
 ?>

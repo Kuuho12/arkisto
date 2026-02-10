@@ -10,7 +10,8 @@ use Gemini\Data\Content;
 use Gemini\Enums\Role;
 use Gemini\Enums\FileState;
 use Gemini\Data\UploadedFile;
-class AIGemini extends AI {
+class AIGemini {
+    private $AI = null;
     private $mimeTypes = array(
         "image/png" => MimeType::IMAGE_PNG,
         "audio/mpeg" => MimeType::AUDIO_MP3,
@@ -23,8 +24,8 @@ class AIGemini extends AI {
         "video/mp4" => MimeType::VIDEO_MP4
     ); 
     public $structured_configs;
-    public function __construct($apiKey, $model = 'gemini-2.5-flash') {
-        parent::__construct($apiKey, "gemini", $model);
+    public function __construct($AIData) {
+        $this->AI = $AIData;
     }
     /**
      * Tekee haun Gemini API:iin käyttäen haun pohjana aiemmin valittua esivalmisteltua kyselyä
@@ -38,8 +39,8 @@ class AIGemini extends AI {
      */
     public function tekstiHaku2($prompt) {
         try {
-        $result = $this->client
-            ->generativeModel(model: $this->model)
+        $result = $this->AI->client
+            ->generativeModel(model: $this->AI->model)
             ->generateContent($prompt);
         $vastaus = $result->text();
         return [true, $vastaus];
@@ -55,10 +56,10 @@ class AIGemini extends AI {
     }
 
     function chattays($arvot, $chathistory) {
-        $prompt = parent::suoritaHaku($arvot);
+        $prompt = $this->AI->suoritaHaku($arvot);
         try {
-            $chat = $this->client
-                ->generativeModel(model: $this->model)
+            $chat = $this->AI->client
+                ->generativeModel(model: $this->AI->model)
                 ->startChat(history: $chathistory);
             $result = $chat->sendMessage($prompt);
             $vastaus = $result->text();
@@ -79,11 +80,11 @@ class AIGemini extends AI {
     }
     
     function suoritaHaku($arvot) {
-        $prompt = parent::suoritaHaku($arvot);
+        $prompt = $this->AI->suoritaHaku($arvot);
         try {
-            if(count($this->files) > 0) {
+            if(count($this->AI->files) > 0) {
                 $prompt = [$prompt];
-                foreach ($this->files as $tiedosto) {
+                foreach ($this->AI->files as $tiedosto) {
                     $finfo = finfo_open(FILEINFO_MIME_TYPE);
                     $mime_type = finfo_file($finfo, $tiedosto);
                     if (in_array($mime_type, array_keys($this->mimeTypes))) {
@@ -99,15 +100,15 @@ class AIGemini extends AI {
                     )
                     );
                 }
-                $result = $this->client
-                    ->generativeModel(model: $this->model)
+                $result = $this->AI->client
+                    ->generativeModel(model: $this->AI->model)
                     ->generateContent($prompt);
                 $vastaus = $result->text();
                 $totalTokes = $result->usageMetadata->totalTokenCount;
                 return [true, $vastaus, "total_tokens" => $totalTokes];
             } else {
-                $result = $this->client
-                    ->generativeModel(model: $this->model)
+                $result = $this->AI->client
+                    ->generativeModel(model: $this->AI->model)
                     ->generateContent($prompt);
                 $vastaus = $result->text();
                 $totalTokes = $result->usageMetadata->totalTokenCount;
@@ -135,7 +136,7 @@ class AIGemini extends AI {
      */
     function tiedostoHaku2 ($prompt) {
         $prompt = [$prompt];
-        foreach ($this->files as $tiedosto) {
+        foreach ($this->AI->files as $tiedosto) {
             $finfo = finfo_open(FILEINFO_MIME_TYPE);
             $mime_type = finfo_file($finfo, $tiedosto);
             if (in_array($mime_type, array_keys($this->mimeTypes))) {
@@ -152,8 +153,8 @@ class AIGemini extends AI {
             );
         }
         try {
-            $result = $this->client
-            ->generativeModel(model: $this->model)
+            $result = $this->AI->client
+            ->generativeModel(model: $this->AI->model)
             ->generateContent($prompt);
             $vastaus = $result->text();
             return [true, $vastaus];
@@ -185,7 +186,7 @@ class AIGemini extends AI {
         else {
             return [false, "Epätuettu tiedostomuoto: " . $mime_type];
         }
-        $files = $this->client->files();
+        $files = $this->AI->client->files();
         $file = $files->upload(
             filename: $tiedosto,
             mimeType: $geminiMimeType,
@@ -203,7 +204,7 @@ class AIGemini extends AI {
         }
     }
     function filesApiHaku($prompt, $file) { //Ei toimi
-        $prompt = parent::suoritaHaku($prompt);
+        $prompt = $this->AI->suoritaHaku($prompt);
         try {
             $mime_type = $file->mimeType;
             if (in_array($mime_type, array_keys($this->mimeTypes))) {
@@ -216,8 +217,8 @@ class AIGemini extends AI {
                 fileUri: $file->uri,
                 mimeType: $geminiMimeType  // or detect from the file object
             );
-            $result = $this->client
-            ->generativeModel(model: $this->model)
+            $result = $this->AI->client
+            ->generativeModel(model: $this->AI->model)
             ->generateContent([
                 $prompt,
                 $uploadedFile
@@ -248,8 +249,8 @@ class AIGemini extends AI {
     function strukturoituHaku2($prompt, $structure) {
         $valittuStructure = $this->structured_configs[$structure];
         try {
-            $result = $this->client
-            ->generativeModel(model: $this->model)
+            $result = $this->AI->client
+            ->generativeModel(model: $this->AI->model)
             ->withGenerationConfig(
                 generationConfig: new GenerationConfig(
                     responseMimeType: ResponseMimeType::APPLICATION_JSON,
@@ -327,13 +328,13 @@ class AIGemini extends AI {
     }
     function modelExists($modelName = null) {
         if ($modelName === null) {
-        $modelName = $this->model;
+        $modelName = $this->AI->model;
         }
         $malli = false;
         try {
-            $malli = !is_null($this->client->models()->retrieve('models/' . $modelName));
+            $malli = !is_null($this->AI->client->models()->retrieve('models/' . $modelName));
             // Use a minimal prompt to test
-            $result = $this->client
+            $result = $this->AI->client
                 ->generativeModel(model: $modelName)
                 ->generateContent('Test');  // Short prompt to minimize token usage
             return [true, null, $malli];  // If no exception, model exists
@@ -349,11 +350,11 @@ class AIGemini extends AI {
         }
     }
     function laskeTokenit($arvot) {
-        $prompt = parent::suoritaHaku($arvot);
+        $prompt = $this->AI->suoritaHaku($arvot);
         try {
-            if(count($this->files) > 0) {
+            if(count($this->AI->files) > 0) {
                 $prompt = [$prompt];
-                foreach ($this->files as $tiedosto) {
+                foreach ($this->AI->files as $tiedosto) {
                     $finfo = finfo_open(FILEINFO_MIME_TYPE);
                     $mime_type = finfo_file($finfo, $tiedosto);
                     if (in_array($mime_type, array_keys($this->mimeTypes))) {
@@ -369,14 +370,14 @@ class AIGemini extends AI {
                     )
                     );
                 }
-                $result = $this->client
-                    ->generativeModel(model: $this->model)
+                $result = $this->AI->client
+                    ->generativeModel(model: $this->AI->model)
                     ->countTokens($prompt);
                 $vastaus = $result->totalTokens;
                 return [true, $vastaus];
             } else {
-                $result = $this->client
-                    ->generativeModel(model: $this->model)
+                $result = $this->AI->client
+                    ->generativeModel(model: $this->AI->model)
                     ->countTokens($prompt);
                 $vastaus = $result->totalTokens;
                 return [true, $vastaus];

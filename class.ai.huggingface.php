@@ -1,6 +1,7 @@
 <?php
 require_once 'class.ai.php';
-class AIHuggingface extends AI {
+class AIHuggingface {
+    private $AI;
     public $jsonSchemas = [
         "reseptit" => [
         'type' => 'object',
@@ -21,8 +22,8 @@ class AIHuggingface extends AI {
         'required' => ['recipes']
     ]
     ];
-    public function __construct($apiKey, $model = "deepseek-ai/DeepSeek-V3.2:novita") {
-        parent::__construct($apiKey, "huggingface", $model);
+    public function __construct($AIData) { /*$apiKey, $model = "deepseek-ai/DeepSeek-V3.2:novita"*/
+        $this->AI = $AIData;
     }
     /**
      * Suorittaa tekstihakun tekoälyrajapintaan tai hakee valmiin vastauksen välimuistista.
@@ -38,7 +39,7 @@ class AIHuggingface extends AI {
     public function tekstiHaku2($prompt, $temperature = 0.8, $max_tokens = null)
     {
         $promptHash = md5($prompt);
-        $parts = explode(':', $this->model);
+        $parts = explode(':', $this->AI->model);
         $model = str_replace("/", "-", $parts[0]);
         $tiedostonPolku = 'temp_ai/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
         if(file_exists($tiedostonPolku)) {
@@ -49,8 +50,8 @@ class AIHuggingface extends AI {
             return [true, $vastaus];
         }
         try {
-            $response = $this->client->chat()->create([
-            'model' => $this->model,
+            $response = $this->AI->client->chat()->create([
+            'model' => $this->AI->model,
             'messages' => [
                 [
                     'role' => 'user', 
@@ -77,11 +78,11 @@ class AIHuggingface extends AI {
         
     }
     function chattays($arvot, $chathistory, $temperature = 0.8, $max_tokens = null) {
-        $prompt = parent::suoritaHaku($arvot);
+        $prompt = $this->AI->suoritaHaku($arvot);
         try {
             $messages = array_merge($chathistory, [['role' => 'user', 'content' => $prompt]]);
-            $response = $this->client->chat()->create([
-                'model' => $this->model,
+            $response = $this->AI->client->chat()->create([
+                'model' => $this->AI->model,
                 'messages' => $messages,
                 'max_tokens' => $max_tokens,
                 'temperature' => $temperature,
@@ -104,11 +105,11 @@ class AIHuggingface extends AI {
 
     }
     function suoritaHaku($arvot, $filePath = null, $temperature = 0.8, $max_tokens = null, $haetaankoAiempi = true) {
-        $prompt = parent::suoritaHaku($arvot);
+        $prompt = $this->AI->suoritaHaku($arvot);
         try {
             if ($filePath == null) {
                 $promptHash = md5($prompt);
-                $parts = explode(':', $this->model);
+                $parts = explode(':', $this->AI->model);
                 $model = str_replace("/", "-", $parts[0]);
                 $tiedostonPolku = 'temp_ai/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
                 if(file_exists($tiedostonPolku ) && $haetaankoAiempi ) {
@@ -118,8 +119,8 @@ class AIHuggingface extends AI {
                     //echo "Ladattu välimuistista: " . $tiedostonPolku . "\n";
                     return [true, $vastaus];
                 }
-                $response = $this->client->chat()->create([
-                'model' => $this->model,
+                $response = $this->AI->client->chat()->create([
+                'model' => $this->AI->model,
                 'messages' => [
                     [
                         'role' => 'user', 
@@ -142,7 +143,7 @@ class AIHuggingface extends AI {
 
                 $promptHash = md5($prompt);
                 $filePathHash = md5($filePath);
-                $parts = explode(':', $this->model);
+                $parts = explode(':', $this->AI->model);
                 $model = str_replace("/", "-", $parts[0]);
                 $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
 
@@ -171,8 +172,8 @@ class AIHuggingface extends AI {
                 } else {
                     return [false, "Tiedostotyyppiä ei tueta: " . $mimeType];
                 }
-                $response = $this->client->chat()->create([
-                    'model' => $this->model,
+                $response = $this->AI->client->chat()->create([
+                    'model' => $this->AI->model,
                     'messages' => $messages,
                     'max_tokens' => $max_tokens,
                     'temperature' => $temperature,
@@ -214,7 +215,7 @@ class AIHuggingface extends AI {
 
         $promptHash = md5($prompt);
         $filePathHash = md5($filePath);
-        $parts = explode(':', $this->model);
+        $parts = explode(':', $this->AI->model);
         $model = str_replace("/", "-", $parts[0]);
         $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
 
@@ -244,8 +245,8 @@ class AIHuggingface extends AI {
             } else {
                 return [false, "Tiedostotyyppiä ei tueta: " . $mimeType];
             }
-            $response = $this->client->chat()->create([
-                'model' => $this->model,
+            $response = $this->AI->client->chat()->create([
+                'model' => $this->AI->model,
                 'messages' => $messages,
                 'max_tokens' => $max_tokens,
                 'temperature' => $temperature,
@@ -274,7 +275,7 @@ class AIHuggingface extends AI {
      */
     function strukturoituHaku2($prompt, $jsonSchema, $temperature = 0.0, $max_tokens = null) {
         $promptHash = md5($prompt);
-        $parts = explode(':', $this->model);
+        $parts = explode(':', $this->AI->model);
         $model = str_replace("/", "-", $parts[0]);
         $tiedostonPolku = 'temp_ai/hf_structuredhaku_' . $promptHash . '_' . $jsonSchema . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
         if(file_exists($tiedostonPolku)) {
@@ -288,8 +289,8 @@ class AIHuggingface extends AI {
         $schemaJson = json_encode($this->jsonSchemas[$jsonSchema]);
         $prompt = str_replace("[Schema]", $schemaJson, $prompt); // Muistaakseni, jos tämän teki ennen välimuistutusta, tiedostopolusta tuli liian pitkä
         try {
-            $response = $this->client->chat()->create([
-            'model' => $this->model,
+            $response = $this->AI->client->chat()->create([
+            'model' => $this->AI->model,
             'messages' => [
                 [
                     'role' => 'user', 
@@ -332,13 +333,13 @@ class AIHuggingface extends AI {
     }
     function modelExists($modelName = null) {
         if ($modelName === null) {
-        $modelName = $this->model;
+        $modelName = $this->AI->model;
         }
         $malli = null;
         try {
             //$malli = !is_null($this->client->models()->retrieve($modelName));
             // Use a minimal prompt to test
-            $response = $this->client->chat()->create([
+            $response = $this->AI->client->chat()->create([
                 'model' => $modelName,
                 'messages' => [['role' => 'user', 'content' => 'Test']],
                 'max_tokens' => 1,  // Minimal to avoid token waste

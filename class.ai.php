@@ -1,6 +1,6 @@
 <?php
 require_once 'vendor/autoload.php';
-class AI {
+class Ai {
     public $apiKey;
     public $client;
     public $model;

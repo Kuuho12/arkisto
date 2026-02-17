@@ -14,7 +14,8 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
     $chat_history_id = uniqid();
     $_SESSION['chat_history'][$chat_history_id] = [];
     if($api === "Gemini") {
-        $AIGemini = new AIGemini(getenv('GEMINI_API_KEY'), $malli);
+        $AI = new Ai(getenv('GEMINI_API_KEY'), "gemini", $malli);
+        $AIGemini = new AIGemini($AI);
         $tulos = $AIGemini->modelExists();
         if($tulos[0]) {
             echo json_encode(['status' => 'success', 'message' => 'Malli löytyy ja toimii.', 'id' => $chat_history_id ]);
@@ -28,7 +29,8 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
             echo json_encode(['status' => 'error', 'error' => $error, 'message' => 'Error: ' . $tulos[1]]);
         }
     } else if ($api === "Hugging Face") {
-        $Aihuggingface = new AIHuggingface(getenv('HF_TOKEN'), $malli);
+        $AI = new Ai(getenv('HF_TOKEN'), "huggingface", $malli);
+        $Aihuggingface = new AIHuggingface($AI);
         $tulos = $Aihuggingface->modelExists();
         if($tulos[0]) {
             echo json_encode(['status' => 'success', 'message' => 'Malli löytyy ja toimii.', 'id' => $chat_history_id ]);
@@ -57,7 +59,8 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
         //$parser = new \cebe\markdown\Markdown();
         $parser->html5 = true;
         if($api === "Gemini") {
-            $AIGemini = new AIGemini(getenv('GEMINI_API_KEY'), $malli);
+            $AI = new Ai(getenv('GEMINI_API_KEY'), "gemini", $malli);
+            $AIGemini = new AIGemini($AI);
             if($onkoChattays) {
                 $vastaus = $AIGemini->chattays([$viesti], $_SESSION['chat_history'][$chatti_id]);
                 if(count($vastaus) > 2) {
@@ -77,7 +80,8 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
             fclose($vastausFile);
             echo json_encode(['status' => 'success', 'vastaus' => $markdownToHtml]);
         } else if ($api === "Hugging Face") {
-            $Aihuggingface = new AIHuggingface(getenv('HF_TOKEN'), $malli);
+            $AI = new Ai(getenv('HF_TOKEN'), "huggingface", $malli);
+            $Aihuggingface = new AIHuggingface($AI);
             if ($onkoChattays) {
                 $vastaus = $Aihuggingface->chattays([$viesti], $_SESSION['chat_history'][$chatti_id]);
                 if(count($vastaus) > 2) {

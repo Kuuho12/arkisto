@@ -13,6 +13,7 @@ class Ai {
     ];
     public $valittuEsivalmisteltuKysely;
     public $files = array();
+    public $temp_dir = "temp_ai";
     public function __construct($apiKey, $api = "gemini", $model = null)
     {
         $this->apiKey = $apiKey;

@@ -47,10 +47,13 @@ class AIGemini {
     } catch (\GuzzleHttp\Exception\ClientException $e) {
         $statusCode = $e->getResponse()->getStatusCode();
         if ($statusCode === 429) {
-            return [false, "Rate limit exceeded. Please try again later."];
+            return [null, "Rate limit exceeded. Please try again later."];
         }
         return [false, "HTTP Error $statusCode: " . $e->getMessage()];
     } catch (\Exception $e) {
+        if ($e->getErrorCode() === 429) {
+            return [null, "Rate limit exceeded. Please try again later."];
+        }
         return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
     }
     }
@@ -71,10 +74,13 @@ class AIGemini {
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             $statusCode = $e->getResponse()->getStatusCode();
             if ($statusCode === 429) {
-                return [false, "Rate limit exceeded. Please try again later."];
+                return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
     }
@@ -117,10 +123,13 @@ class AIGemini {
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             $statusCode = $e->getResponse()->getStatusCode();
             if ($statusCode === 429) {
-                return [false, "Rate limit exceeded. Please try again later."];
+                return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
     }
@@ -161,10 +170,13 @@ class AIGemini {
         } catch (\GuzzleHttp\Exception\ClientException $e) {
         $statusCode = $e->getResponse()->getStatusCode();
         if ($statusCode === 429) {
-            return [false, "Rate limit exceeded. Please try again later."];
+            return [null, "Rate limit exceeded. Please try again later."];
         }
         return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
     }
@@ -229,10 +241,13 @@ class AIGemini {
         } catch (\GuzzleHttp\Exception\ClientException $e) {
         $statusCode = $e->getResponse()->getStatusCode();
         if ($statusCode === 429) {
-            return [false, "Rate limit exceeded. Please try again later."];
+            return [null, "Rate limit exceeded. Please try again later."];
         }
         return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
     }
@@ -270,11 +285,14 @@ class AIGemini {
         } catch (\GuzzleHttp\Exception\ClientException $e) {
         $statusCode = $e->getResponse()->getStatusCode();
         if ($statusCode === 429) {
-            return [false, "Rate limit exceeded. Please try again later."];
+            return [null, "Rate limit exceeded. Please try again later."];
         }
         return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-        return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
+            return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
     }
     /**
@@ -346,6 +364,9 @@ class AIGemini {
             // Re-throw other errors (e.g., auth issues)
             throw $e;
         } catch (\Exception $e) {
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
             return [false, $e->getMessage(), $malli];  // Any other error likely means model doesn't exist
         }
     }
@@ -387,7 +408,10 @@ class AIGemini {
             $statusCode = $e->getResponse()->getStatusCode();
             return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-        return [false, "Error: " . $e->getMessage()];
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
+            return [false, "Error: " . $e->getMessage()];
         }
     }
 }

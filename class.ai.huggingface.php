@@ -41,7 +41,7 @@ class AIHuggingface {
         $promptHash = md5($prompt);
         $parts = explode(':', $this->AI->model);
         $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = 'temp_ai/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+        $tiedostonPolku = $this->AI->temp_dir . '/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
         if(file_exists($tiedostonPolku)) {
             $file = fopen($tiedostonPolku, 'r');
             $vastaus = fread($file, filesize($tiedostonPolku));
@@ -69,11 +69,14 @@ class AIHuggingface {
         } catch (\GuzzleHttp\Exception\ClientException $e) {
         $statusCode = $e->getResponse()->getStatusCode();
         if ($statusCode === 429) {
-            return [false, "Rate limit exceeded. Please try again later."];
+            return [null, "Rate limit exceeded. Please try again later."];
         }
         return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-        return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
+            return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
         
     }
@@ -96,11 +99,14 @@ class AIHuggingface {
         } catch (\GuzzleHttp\Exception\ClientException $e) {
         $statusCode = $e->getResponse()->getStatusCode();
         if ($statusCode === 429) {
-            return [false, "Rate limit exceeded. Please try again later."];
+            return [null, "Rate limit exceeded. Please try again later."];
         }
         return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-        return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
+            return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
 
     }
@@ -111,7 +117,7 @@ class AIHuggingface {
                 $promptHash = md5($prompt);
                 $parts = explode(':', $this->AI->model);
                 $model = str_replace("/", "-", $parts[0]);
-                $tiedostonPolku = 'temp_ai/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+                $tiedostonPolku = $this->AI->temp_dir . '/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
                 if(file_exists($tiedostonPolku ) && $haetaankoAiempi ) {
                     $file = fopen($tiedostonPolku, 'r');
                     $vastaus = fread($file, filesize($tiedostonPolku));
@@ -145,7 +151,7 @@ class AIHuggingface {
                 $filePathHash = md5($filePath);
                 $parts = explode(':', $this->AI->model);
                 $model = str_replace("/", "-", $parts[0]);
-                $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+                $tiedostonPolku = $this->AI->temp_dir . '/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
 
                 if(file_exists($tiedostonPolku) && $haetaankoAiempi) {
                     $file = fopen($tiedostonPolku, 'r');
@@ -187,11 +193,14 @@ class AIHuggingface {
         } catch (\GuzzleHttp\Exception\ClientException $e) {
         $statusCode = $e->getResponse()->getStatusCode();
         if ($statusCode === 429) {
-            return [false, "Rate limit exceeded. Please try again later."];
+            return [null, "Rate limit exceeded. Please try again later."];
         }
         return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-        return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
+            return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
     }
     /**
@@ -217,7 +226,7 @@ class AIHuggingface {
         $filePathHash = md5($filePath);
         $parts = explode(':', $this->AI->model);
         $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = 'temp_ai/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+        $tiedostonPolku = $this->AI->temp_dir . '/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
 
         if(file_exists($tiedostonPolku)) {
             $file = fopen($tiedostonPolku, 'r');
@@ -257,6 +266,9 @@ class AIHuggingface {
             fclose($file);
             return [true, $vastaus];
         } catch (\Exception $e) {
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
         catch (\Throwable $e) {
@@ -277,7 +289,7 @@ class AIHuggingface {
         $promptHash = md5($prompt);
         $parts = explode(':', $this->AI->model);
         $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = 'temp_ai/hf_structuredhaku_' . $promptHash . '_' . $jsonSchema . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+        $tiedostonPolku = $this->AI->temp_dir . '/hf_structuredhaku_' . $promptHash . '_' . $jsonSchema . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
         if(file_exists($tiedostonPolku)) {
             $file = fopen($tiedostonPolku, 'r');
             $vastaus = fread($file, filesize($tiedostonPolku));
@@ -313,7 +325,10 @@ class AIHuggingface {
         fclose($file);
         return [true, $parsed];
         } catch (\Exception $e) {
-        return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
+            return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
     }
     }
     /**

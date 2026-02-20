@@ -24,8 +24,11 @@ class Ai {
                 ->withApiKey($this->apiKey)
                 ->withBaseUri('https://router.huggingface.co/v1')
                 ->make();
-            $this->model = $model;
             $this->childClass = new AIHuggingface($this);
+        }
+        else if ($api === "openai") {
+            $this->client = OpenAI::client($this->apiKey);
+            $this->childClass = new AIOpenAI($this);
         }
         else if ($api === "gemini") {
             $this->client = \Gemini::client($this->apiKey);
@@ -38,21 +41,24 @@ class Ai {
      * @param array $arvot Lista haun osista, jotka liitetään esivalmisteltuun kyselyyn
      * @param object $childClass Lapsiluokka, joka hoitaa haun loppuun
      */
-    function tekstiHaku($arvot) {
+    function tekstiHaku($arvot, ...$extraParametrit) {
         $prompt = $this->valittuEsivalmisteltuKysely;
         $arvotCount = count($arvot);
         for($x = 1; $x <= $arvotCount; $x++) {
             $prompt = str_replace("%$x", $arvot[$x-1], $prompt);
         }
-        return $this->childClass->tekstiHaku2($prompt);
+        return $this->childClass->tekstiHaku($prompt, ...$extraParametrit);
     }
-    function suoritaHaku($arvot) {
+    function suoritaMuotoilu($arvot) {
         $prompt = $this->valittuEsivalmisteltuKysely;
         $arvotCount = count($arvot);
         for($x = 1; $x <= $arvotCount; $x++) {
             $prompt = str_replace("%$x", $arvot[$x-1], $prompt);
         }
         return $prompt;
+    }
+    function suoritaHaku($arvot) {
+        return $this->childClass->suoritaHaku($arvot);
     }
     /**
      * Muotoilee promptin esivalmistellun kyselyn pohjalta ja antaa lapsiluokan hoitaa tiedostohaun loppuun.
@@ -61,14 +67,14 @@ class Ai {
      * @param object $childClass Lapsiluokka, joka hoitaa haun loppuun
      * @param string $filePath Tiedoston polku, jota saatetaan käytetään lapsiluokasta riippuen tiedoston hakuun
      */
-    function tiedostoHaku($arvot, $filePath = null) {
+    function tiedostoHaku($arvot, $filePath = null, ...$extraParametrit) {
         $prompt = $this->valittuEsivalmisteltuKysely;
         $arvotCount = count($arvot);
         for($x = 1; $x <= $arvotCount; $x++) {
             $prompt = str_replace("%$x", $arvot[$x-1], $prompt);
         }
         if (method_exists($this->childClass, 'tiedostoHaku1')) {
-            return $this->childClass->tiedostoHaku1($prompt, $filePath);
+            return $this->childClass->tiedostoHaku1($prompt, $filePath, ...$extraParametrit);
         } else {
         return $this->childClass->tiedostoHaku2($prompt);
         }
@@ -114,7 +120,7 @@ class Ai {
         for($x = 1; $x <= $arvotCount; $x++) {
             $prompt = str_replace("%$x", $arvot[$x-1], $prompt);
         }
-        return $this->childClass->strukturoituHaku2($prompt, $jsonSchema);
+        return $this->childClass->strukturoituHaku($prompt, $jsonSchema);
     }
     /**
      * Valitsee esivalmistellun kyselyn avaimella. Palauttaa true, jos kysely löytyi ja valittiin, muuten false.

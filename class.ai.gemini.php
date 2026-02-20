@@ -37,7 +37,7 @@ class AIGemini {
      * 
      * @param array $prompt Tekoälylle lähetettävä kysely
      */
-    public function tekstiHaku2($prompt) {
+    public function tekstiHaku($prompt) {
         try {
         $result = $this->AI->client
             ->generativeModel(model: $this->AI->model)
@@ -59,7 +59,7 @@ class AIGemini {
     }
 
     function chattays($arvot, $chathistory) {
-        $prompt = $this->AI->suoritaHaku($arvot);
+        $prompt = $this->AI->suoritaMuotoilu($arvot);
         try {
             $chat = $this->AI->client
                 ->generativeModel(model: $this->AI->model)
@@ -86,7 +86,7 @@ class AIGemini {
     }
     
     function suoritaHaku($arvot) {
-        $prompt = $this->AI->suoritaHaku($arvot);
+        $prompt = $this->AI->suoritaMuotoilu($arvot);
         try {
             if(count($this->AI->files) > 0) {
                 $prompt = [$prompt];
@@ -216,7 +216,7 @@ class AIGemini {
         }
     }
     function filesApiHaku($prompt, $file) { //Ei toimi
-        $prompt = $this->AI->suoritaHaku($prompt);
+        $prompt = $this->AI->suoritaMuotoilu($prompt);
         try {
             $mime_type = $file->mimeType;
             if (in_array($mime_type, array_keys($this->mimeTypes))) {
@@ -261,7 +261,7 @@ class AIGemini {
      * @param string $prompt Tekoälylle lähetettävä kysely
      * @param string $structure JSON-skeeman nimi, jolla haetaan tallennettu JSON-skeema
      */
-    function strukturoituHaku2($prompt, $structure) {
+    function strukturoituHaku($prompt, $structure) {
         $valittuStructure = $this->structured_configs[$structure];
         try {
             $result = $this->AI->client
@@ -371,7 +371,7 @@ class AIGemini {
         }
     }
     function laskeTokenit($arvot) {
-        $prompt = $this->AI->suoritaHaku($arvot);
+        $prompt = $this->AI->suoritaMuotoilu($arvot);
         try {
             if(count($this->AI->files) > 0) {
                 $prompt = [$prompt];

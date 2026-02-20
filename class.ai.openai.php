@@ -1,6 +1,6 @@
 <?php
 require_once 'class.ai.php';
-class AIHuggingface {
+class AIOpenAI {
     private $AI;
     public $jsonSchemas = [
         "reseptit" => [
@@ -22,14 +22,14 @@ class AIHuggingface {
         'required' => ['recipes']
     ]
     ];
-    public function __construct($AIData) { /*$apiKey, $model = "deepseek-ai/DeepSeek-V3.2:novita"*/
+    public function __construct($AIData) {
         $this->AI = $AIData;
     }
     /**
      * Suorittaa tekstihakun tekoälyrajapintaan tai hakee valmiin vastauksen välimuistista.
      * 
      * Koodi aluksi tarkistaa onko juuri samanlaisen haun vastaus välimuistissa. Jos on, se lataa vastauksen tiedostosta ja palauttaa sen.
-     * Muuten se suorittaa haun Hugging Face API:iin ja tallentaa vastauksen välimuistiin tulevia hakuja varten.
+     * Muuten se suorittaa haun OpenAI API:iin ja tallentaa vastauksen välimuistiin tulevia hakuja varten.
      * Koodi palauttaa listan, jonka esimmäinen osa on boolean, joka kertoo onnistuiko haku ja toinen osa haun tuloksen tai virheilmoituksen.
      * 
      * @param string $prompt Tekoälylle lähetettävä kysely
@@ -39,9 +39,7 @@ class AIHuggingface {
     public function tekstiHaku($prompt, $temperature = 0.8, $max_tokens = null, $haetaankoAiempi = true)
     {
         $promptHash = md5($prompt);
-        $parts = explode(':', $this->AI->model);
-        $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = $this->AI->temp_dir . '/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+        $tiedostonPolku = $this->AI->temp_dir . '/openai_tekstihaku_' . $promptHash . '_' . $this->AI->model . '_' . $temperature . '_' . $max_tokens . '.txt';
         if(file_exists($tiedostonPolku) && $haetaankoAiempi) {
             $file = fopen($tiedostonPolku, 'r');
             $vastaus = fread($file, filesize($tiedostonPolku));
@@ -115,14 +113,11 @@ class AIHuggingface {
         try {
             if ($filePath == null) {
                 $promptHash = md5($prompt);
-                $parts = explode(':', $this->AI->model);
-                $model = str_replace("/", "-", $parts[0]);
-                $tiedostonPolku = $this->AI->temp_dir . '/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+                $tiedostonPolku = $this->AI->temp_dir . '/openai_tekstihaku_' . $promptHash . '_' . $this->AI->model . '_' . $temperature . '_' . $max_tokens . '.txt';
                 if(file_exists($tiedostonPolku) && $haetaankoAiempi) {
                     $file = fopen($tiedostonPolku, 'r');
                     $vastaus = fread($file, filesize($tiedostonPolku));
                     fclose($file);
-                    //echo "Ladattu välimuistista: " . $tiedostonPolku . "\n";
                     return [true, $vastaus];
                 }
                 $response = $this->AI->client->chat()->create([
@@ -144,15 +139,12 @@ class AIHuggingface {
             } else {
                 $promptHash = md5($prompt);
                 $filePathHash = md5($filePath);
-                $parts = explode(':', $this->AI->model);
-                $model = str_replace("/", "-", $parts[0]);
-                $tiedostonPolku = $this->AI->temp_dir . '/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+                $tiedostonPolku = $this->AI->temp_dir . '/openai_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $this->AI->model . '_' . $temperature . '_' . $max_tokens . '.txt';
 
                 if(file_exists($tiedostonPolku) && $haetaankoAiempi) {
                     $file = fopen($tiedostonPolku, 'r');
                     $vastaus = fread($file, filesize($tiedostonPolku));
                     fclose($file);
-                    //echo "Ladattu välimuistista: " . $tiedostonPolku . "\n";
                     return [true, $vastaus];
                 }
 
@@ -220,9 +212,7 @@ class AIHuggingface {
     function tiedostoHaku1($prompt, $filePath, $temperature = 0.8, $max_tokens = null) {
         $promptHash = md5($prompt);
         $filePathHash = md5($filePath);
-        $parts = explode(':', $this->AI->model);
-        $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = $this->AI->temp_dir . '/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+        $tiedostonPolku = $this->AI->temp_dir . '/openai_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $this->AI->model . '_' . $temperature . '_' . $max_tokens . '.txt';
 
         if(file_exists($tiedostonPolku)) {
             $file = fopen($tiedostonPolku, 'r');
@@ -236,7 +226,6 @@ class AIHuggingface {
             return [false, "Tiedostoa ei löytynyt: " . $filePath];
         }
         $mimeType = mime_content_type($filePath);
-        
         try {
             if (strpos($mimeType, 'text/') === 0) {
                 // Text file: read content and append to prompt
@@ -291,9 +280,7 @@ class AIHuggingface {
         $schemaJson = json_encode($this->jsonSchemas[$jsonSchema]);
         $prompt = str_replace("[Schema]", $schemaJson, $prompt);
         $promptHash = md5($prompt);
-        $parts = explode(':', $this->AI->model);
-        $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = $this->AI->temp_dir . '/hf_structuredhaku_' . $promptHash . '_' . $jsonSchema . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+        $tiedostonPolku = $this->AI->temp_dir . '/openai_structuredhaku_' . $promptHash . '_' . $jsonSchema . '_' . $this->AI->model . '_' . $temperature . '_' . $max_tokens . '.txt';
         if(file_exists($tiedostonPolku)) {
             $file = fopen($tiedostonPolku, 'r');
             $vastaus = fread($file, filesize($tiedostonPolku));
@@ -352,7 +339,9 @@ class AIHuggingface {
         if ($modelName === null) {
         $modelName = $this->AI->model;
         }
+        $malli = false;
         try {
+            $malli = !is_null($this->AI->client->models()->retrieve($modelName));
             // Use a minimal prompt to test
             $response = $this->AI->client->chat()->create([
                 'model' => $modelName,
@@ -364,12 +353,12 @@ class AIHuggingface {
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             $statusCode = $e->getResponse()->getStatusCode();
             if ($statusCode === 404 || $statusCode === 400) {
-                return [false, $e->getMessage()];  // Model/provider not found or invalid
+                return [false, $e->getMessage(), $malli];  // Model/provider not found or invalid
             }
             // Re-throw other errors (e.g., auth/rate limit)
             throw $e;
         } catch (\Throwable $e) {
-            return [false, $e->getMessage()];  // Any other error likely means model doesn't exist
+            return [false, $e->getMessage(), $malli];  // Any other error likely means model doesn't exist
         }
     }
 }

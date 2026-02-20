@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OpenAI\Responses\Responses\Streaming;
+namespace OpenAI\Responses\Images\Streaming;
 
 use OpenAI\Contracts\ResponseContract;
 use OpenAI\Contracts\ResponseHasMetaInformationContract;
@@ -12,7 +12,7 @@ use OpenAI\Responses\Meta\MetaInformation;
 use OpenAI\Testing\Responses\Concerns\Fakeable;
 
 /**
- * @phpstan-type ImageGenerationPartialImageType array{type: string, output_index: int, item_id: string, sequence_number: int, partial_image_index: int, partial_image_b64: string}
+ * @phpstan-type ImageGenerationPartialImageType array{type: string, b64_json: string, created_at: int, size: string, quality: string, background: string, output_format: string, partial_image_index: int}
  *
  * @implements ResponseContract<ImageGenerationPartialImageType>
  */
@@ -28,11 +28,13 @@ final class ImageGenerationPartialImage implements ResponseContract, ResponseHas
 
     private function __construct(
         public readonly string $type,
-        public readonly int $outputIndex,
-        public readonly string $itemId,
-        public readonly int $sequenceNumber,
+        public readonly string $b64Json,
+        public readonly int $createdAt,
+        public readonly string $size,
+        public readonly string $quality,
+        public readonly string $background,
+        public readonly string $outputFormat,
         public readonly int $partialImageIndex,
-        public readonly string $partialImageB64,
         private readonly MetaInformation $meta,
     ) {}
 
@@ -43,11 +45,13 @@ final class ImageGenerationPartialImage implements ResponseContract, ResponseHas
     {
         return new self(
             type: $attributes['type'],
-            outputIndex: $attributes['output_index'],
-            itemId: $attributes['item_id'],
-            sequenceNumber: $attributes['sequence_number'],
+            b64Json: $attributes['b64_json'],
+            createdAt: $attributes['created_at'],
+            size: $attributes['size'],
+            quality: $attributes['quality'],
+            background: $attributes['background'],
+            outputFormat: $attributes['output_format'],
             partialImageIndex: $attributes['partial_image_index'],
-            partialImageB64: $attributes['partial_image_b64'],
             meta: $meta,
         );
     }
@@ -59,11 +63,13 @@ final class ImageGenerationPartialImage implements ResponseContract, ResponseHas
     {
         return [
             'type' => $this->type,
-            'output_index' => $this->outputIndex,
-            'item_id' => $this->itemId,
-            'sequence_number' => $this->sequenceNumber,
+            'b64_json' => $this->b64Json,
+            'created_at' => $this->createdAt,
+            'size' => $this->size,
+            'quality' => $this->quality,
+            'background' => $this->background,
+            'output_format' => $this->outputFormat,
             'partial_image_index' => $this->partialImageIndex,
-            'partial_image_b64' => $this->partialImageB64,
         ];
     }
 }

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OpenAI\Responses\Responses\Streaming;
+namespace OpenAI\Responses\Images\Streaming;
 
 use OpenAI\Contracts\ResponseContract;
 use OpenAI\Contracts\ResponseHasMetaInformationContract;
@@ -12,14 +12,14 @@ use OpenAI\Responses\Meta\MetaInformation;
 use OpenAI\Testing\Responses\Concerns\Fakeable;
 
 /**
- * @phpstan-type McpListToolsType array{type: string, sequence_number: int}
+ * @phpstan-type ErrorType array{type: string, code: string|null, message: string, param: string|null}
  *
- * @implements ResponseContract<McpListToolsType>
+ * @implements ResponseContract<ErrorType>
  */
-final class McpListTools implements ResponseContract, ResponseHasMetaInformationContract
+final class Error implements ResponseContract, ResponseHasMetaInformationContract
 {
     /**
-     * @use ArrayAccessible<McpListToolsType>
+     * @use ArrayAccessible<ErrorType>
      */
     use ArrayAccessible;
 
@@ -28,18 +28,22 @@ final class McpListTools implements ResponseContract, ResponseHasMetaInformation
 
     private function __construct(
         public readonly string $type,
-        public readonly int $sequenceNumber,
+        public readonly ?string $code,
+        public readonly string $message,
+        public readonly ?string $param,
         private readonly MetaInformation $meta,
     ) {}
 
     /**
-     * @param  McpListToolsType  $attributes
+     * @param  ErrorType  $attributes
      */
     public static function from(array $attributes, MetaInformation $meta): self
     {
         return new self(
             type: $attributes['type'],
-            sequenceNumber: $attributes['sequence_number'],
+            code: $attributes['code'],
+            message: $attributes['message'],
+            param: $attributes['param'],
             meta: $meta,
         );
     }
@@ -51,7 +55,9 @@ final class McpListTools implements ResponseContract, ResponseHasMetaInformation
     {
         return [
             'type' => $this->type,
-            'sequence_number' => $this->sequenceNumber,
+            'code' => $this->code,
+            'message' => $this->message,
+            'param' => $this->param,
         ];
     }
 }

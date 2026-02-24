@@ -88,7 +88,7 @@ class AIOpenAI {
             "parametrit" => "A small model alternative to o3",
             "sopimus" => false,
             "providers" => [],
-            "temperature" => 1, //Api valehtelee muilla arvoilla, ettei parametria muka tueta.
+            "temperature" => 1, //Api valehtelee muilla arvoilla, ettei parametria muka tueta. Jos ei tuettaisi, niin arvoksi false, osan koodista valmistelin sitä arvoa varten
             "max_tokens" => 100000
         ],
     ];

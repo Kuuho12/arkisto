@@ -12,6 +12,9 @@ use Gemini\Enums\FileState;
 use Gemini\Data\UploadedFile;
 class AIGemini {
     private $AI = null;
+    private $savetoCache;
+    private $max_output_tokens = 5000;
+    private $temperature = 1;
     private $mimeTypes = array(
         "image/png" => MimeType::IMAGE_PNG,
         "audio/mpeg" => MimeType::AUDIO_MP3,
@@ -24,7 +27,6 @@ class AIGemini {
         "video/mp4" => MimeType::VIDEO_MP4
     ); 
     public $structured_configs = [];
-    private $savetoCache;
     public function __construct($AIData, $savetoCache = false) {
         $this->AI = $AIData;
         $this->savetoCache = $savetoCache;
@@ -39,7 +41,13 @@ class AIGemini {
      * 
      * @param array $prompt Tekoälylle lähetettävä kysely
      */
-    public function tekstiHaku($prompt, $temperature = 1, $max_output_tokens = null, $haetaankoAiempi = true) {
+    public function tekstiHaku($prompt, $temperature = null, $max_output_tokens = null, $haetaankoAiempi = true) {
+        if(is_null($temperature)) {
+            $temperature = $this->temperature;
+        }
+        if(is_null($max_output_tokens)) {
+            $max_output_tokens = $this->max_output_tokens;
+        }
         $promptHash = md5($prompt);
         $tiedostonPolku = $this->AI->temp_dir . "/gemini_tekstihaku_" . $promptHash . "_" . $this->AI->model . "_" . $temperature . "_" . $max_output_tokens . ".txt";
         if($haetaankoAiempi && file_exists($tiedostonPolku)) {
@@ -77,7 +85,13 @@ class AIGemini {
     }
     }
 
-    function chattays($arvot, $chathistory, $temperature = 1, $max_output_tokens = null, $haetaankoAiempi = true) {
+    function chattays($arvot, $chathistory, $temperature = null, $max_output_tokens = null, $haetaankoAiempi = true) {
+        if(is_null($temperature)) {
+            $temperature = $this->temperature;
+        }
+        if(is_null($max_output_tokens)) {
+            $max_output_tokens = $this->max_output_tokens;
+        }
         $prompt = $this->AI->suoritaMuotoilu($arvot);
         try {
             $chat = $this->AI->client
@@ -109,7 +123,13 @@ class AIGemini {
     /**
      * 
      */
-    function suoritaHaku($arvot, $temperature = 1, $max_output_tokens = null, $haetaankoAiempi = true) {
+    function suoritaHaku($arvot, $temperature = null, $max_output_tokens = null, $haetaankoAiempi = true) {
+        if(is_null($temperature)) {
+            $temperature = $this->temperature;
+        }
+        if(is_null($max_output_tokens)) {
+            $max_output_tokens = $this->max_output_tokens;
+        }
         $prompt = $this->AI->suoritaMuotoilu($arvot);
         try {
             if(count($this->AI->files) > 0) {
@@ -187,7 +207,13 @@ class AIGemini {
      * 
      *  @param array $tekstiosa Tekoälylle lähetettävä kysely
      */
-    function tiedostoHaku2 ($prompt, $temperature = 1, $max_output_tokens = null) {
+    function tiedostoHaku2 ($prompt, $temperature = null, $max_output_tokens = null) {
+        if(is_null($temperature)) {
+            $temperature = $this->temperature;
+        }
+        if(is_null($max_output_tokens)) {
+            $max_output_tokens = $this->max_output_tokens;
+        }
         $prompt = [$prompt];
         foreach ($this->AI->files as $tiedosto) {
             $finfo = finfo_open(FILEINFO_MIME_TYPE);

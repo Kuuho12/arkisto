@@ -2,6 +2,9 @@
 require_once 'class.ai.php';
 class AIHuggingface {
     private $AI;
+    private $savetoCache;
+    private $max_tokens = 5000;
+    private $temperature = 0.8;
     public $jsonSchemas = [
         "reseptit" => [
         'type' => 'object',
@@ -22,7 +25,6 @@ class AIHuggingface {
         'required' => ['recipes']
     ]
     ];
-    private $savetoCache;
     public function __construct($AIData, $savetoCache = false) { /*$apiKey, $model = "deepseek-ai/DeepSeek-V3.2:novita"*/
         $this->AI = $AIData;
         $this->savetoCache = $savetoCache;
@@ -38,8 +40,14 @@ class AIHuggingface {
      * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-1.0)
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
      */
-    public function tekstiHaku($prompt, $temperature = 0.8, $max_tokens = null, $haetaankoAiempi = true)
+    public function tekstiHaku($prompt, $temperature = null, $max_tokens = null, $haetaankoAiempi = true)
     {
+        if(is_null($temperature)) {
+            $temperature = $this->temperature;
+        }
+        if(is_null($max_tokens)) {
+            $max_tokens = $this->max_tokens;
+        }
         $promptHash = md5($prompt);
         $parts = explode(':', $this->AI->model);
         $model = str_replace("/", "-", $parts[0]);
@@ -84,7 +92,13 @@ class AIHuggingface {
         }
         
     }
-    function chattays($arvot, $chathistory, $temperature = 0.8, $max_tokens = null) {
+    function chattays($arvot, $chathistory, $temperature = null, $max_tokens = null) {
+        if(is_null($temperature)) {
+            $temperature = $this->temperature;
+        }
+        if(is_null($max_tokens)) {
+            $max_tokens = $this->max_tokens;
+        }
         $prompt = $this->AI->suoritaMuotoilu($arvot);
         try {
             $messages = array_merge($chathistory, [['role' => 'user', 'content' => $prompt]]);
@@ -114,7 +128,13 @@ class AIHuggingface {
         }
 
     }
-    function suoritaHaku($arvot, $filePath = null, $temperature = 0.8, $max_tokens = null, $haetaankoAiempi = true) {
+    function suoritaHaku($arvot, $filePath = null, $temperature = null, $max_tokens = null, $haetaankoAiempi = true) {
+        if(is_null($temperature)) {
+            $temperature = $this->temperature;
+        }
+        if(is_null($max_tokens)) {
+            $max_tokens = $this->max_tokens;
+        }
         $prompt = $this->AI->suoritaMuotoilu($arvot);
         try {
             if ($filePath == null) {
@@ -225,7 +245,13 @@ class AIHuggingface {
      * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-1.0)
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
      */
-    function tiedostoHaku1($prompt, $filePath, $temperature = 0.8, $max_tokens = null) {
+    function tiedostoHaku1($prompt, $filePath, $temperature = null, $max_tokens = null) {
+        if(is_null($temperature)) {
+            $temperature = $this->temperature;
+        }
+        if(is_null($max_tokens)) {
+            $max_tokens = $this->max_tokens;
+        }
         $promptHash = md5($prompt);
         $filePathHash = md5($filePath);
         $parts = explode(':', $this->AI->model);
@@ -298,6 +324,12 @@ class AIHuggingface {
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
      */
     function strukturoituHaku($prompt, $jsonSchema, $temperature = 0.0, $max_tokens = null) {
+        if(is_null($temperature)) {
+            $temperature = $this->temperature;
+        }
+        if(is_null($max_tokens)) {
+            $max_tokens = $this->max_tokens;
+        }
         $schemaJson = json_encode($this->jsonSchemas[$jsonSchema]);
         $prompt = str_replace("[Schema]", $schemaJson, $prompt);
         $promptHash = md5($prompt);

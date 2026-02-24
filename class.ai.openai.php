@@ -1,7 +1,102 @@
 <?php
 require_once 'class.ai.php';
 class AIOpenAI {
+    public static $availableModels = [
+        "gpt-5.1" => [
+            "nimi" => "OpenAI GPT-5.1",
+            "link" => "https://developers.openai.com/api/docs/models/gpt-5-1",
+            "parametrit" => "Previous intelligent reasoning model for coding and agentic tasks with configurable reasoning effort",
+            "sopimus" => false,
+            "providers" => [],
+            "temperature" => null, // 0-2
+            "max_tokens" => 128000
+        ],
+
+        "gpt-5-mini" => [
+            "nimi" => "OpenAI GPT-5 Mini",
+            "link" => "https://developers.openai.com/api/docs/models/gpt-5-mini",
+            "parametrit" => "A faster, cost-efficient version of GPT-5 for well-defined tasks",
+            "sopimus" => false,
+            "providers" => [],
+            "temperature" => 1,
+            "max_tokens" => 128000
+        ],
+
+        "gpt-5-nano" => [
+            "nimi" => "OpenAI GPT-5 Nano",
+            "link" => "https://developers.openai.com/api/docs/models/gpt-5-nano",
+            "parametrit" => "Fastest, most cost-efficient version of GPT-5",
+            "sopimus" => false,
+            "providers" => [],
+            "temperature" => 1,
+            "max_tokens" => 128000
+        ],
+
+        "gpt-4.1" => [
+            "nimi" => "OpenAI GPT-4.1",
+            "link" => "https://developers.openai.com/api/docs/models/gpt-4.1",
+            "parametrit" => "Smartest non-reasoning model",
+            "sopimus" => false,
+            "providers" => [],
+            "temperature" => null, // 0-2
+            "max_tokens" => 32768
+        ],
+
+        "gpt-4.1-mini" => [
+            "nimi" => "OpenAI GPT-4.1 Mini",
+            "link" => "https://developers.openai.com/api/docs/models/gpt-4-1-mini",
+            "parametrit" => "Smaller, faster version of GPT-4.1",
+            "sopimus" => false,
+            "providers" => [],
+            "temperature" => null, // 0-2
+            "max_tokens" => 32768
+        ],
+
+        "gpt-4.1-nano" => [
+            "nimi" => "OpenAI GPT-4.1 Nano",
+            "link" => "https://developers.openai.com/api/docs/models/gpt-4-1-nano",
+            "parametrit" => "Fastest, most cost-efficient version of GPT-4.1",
+            "sopimus" => false,
+            "providers" => [],
+            "temperature" => null, // 0-2
+            "max_tokens" => 32768
+        ],
+
+        "o3" => [
+            "nimi" => "OpenAI o3",
+            "link" => "https://developers.openai.com/api/docs/models/o3",
+            "parametrit" => "Reasoning model for complex tasks, succeeded by GPT-5",
+            "sopimus" => false,
+            "providers" => [],
+            "temperature" => 1,
+            "max_tokens" => 100000
+        ],
+
+        "o4-mini" => [
+            "nimi" => "OpenAI o4-mini",
+            "link" => "https://developers.openai.com/api/docs/models/o4-mini",
+            "parametrit" => "Fast, cost-efficient reasoning model, succeeded by GPT-5 mini",
+            "sopimus" => false,
+            "providers" => [],
+            "temperature" => 1,
+            "max_tokens" => 100000
+        ],
+
+        "o3-mini" => [
+            "nimi" => "OpenAI o3-mini",
+            "link" => "https://developers.openai.com/api/docs/models/o3-mini",
+            "parametrit" => "A small model alternative to o3",
+            "sopimus" => false,
+            "providers" => [],
+            "temperature" => 1, //Api valehtelee muilla arvoilla, ettei parametria muka tueta.
+            "max_tokens" => 100000
+        ],
+    ];
     private $AI;
+    private $savetoCache;
+    private $max_tokens = 250;
+    private $temperature = 0.8;
+
     public $jsonSchemas = [
         "reseptit" => [
         'type' => 'object',
@@ -22,8 +117,16 @@ class AIOpenAI {
         'required' => ['recipes']
     ]
     ];
-    public function __construct($AIData) {
+    public function __construct($AIData, $savetoCache = false) {
         $this->AI = $AIData;
+        $this->savetoCache = $savetoCache;
+
+        if (is_null($this->AI->model)) {
+            $this->AI->model = 'gpt-5-nano';
+        }
+
+        $this->temperature = self::$availableModels[$this->AI->model]['temperature'] ?? $this->temperature;
+        $this->max_tokens = self::$availableModels[$this->AI->model]['max_tokens'] ?? $this->max_tokens;
     }
     /**
      * Suorittaa tekstihakun tekoälyrajapintaan tai hakee valmiin vastauksen välimuistista.
@@ -36,8 +139,14 @@ class AIOpenAI {
      * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-1.0)
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
      */
-    public function tekstiHaku($prompt, $temperature = 0.8, $max_tokens = null, $haetaankoAiempi = true)
+    public function tekstiHaku($prompt, $temperature = null, $max_tokens = null, $haetaankoAiempi = true)
     {
+        if(is_null($temperature)) {
+            $temperature = $this->temperature;
+        }
+        if(is_null($max_tokens)) {
+            $max_tokens = $this->max_tokens;
+        }
         $promptHash = md5($prompt);
         $tiedostonPolku = $this->AI->temp_dir . '/openai_tekstihaku_' . $promptHash . '_' . $this->AI->model . '_' . $temperature . '_' . $max_tokens . '.txt';
         if(file_exists($tiedostonPolku) && $haetaankoAiempi) {
@@ -48,21 +157,38 @@ class AIOpenAI {
             return [true, $vastaus];
         }
         try {
-            $response = $this->AI->client->chat()->create([
-            'model' => $this->AI->model,
-            'messages' => [
-                [
-                    'role' => 'user', 
-                    'content' => $prompt
+            if($temperature) {
+                $chatParams = [
+                'model' => $this->AI->model,
+                'messages' => [
+                    [
+                        'role' => 'user', 
+                        'content' => $prompt
+                    ],
                 ],
-            ],
-            'max_tokens' => $max_tokens,
-            'temperature' => $temperature,
-        ]);
+                'max_completion_tokens' => $max_tokens, //toisin kuin max_completion_tokens, max_tokens laskisi vain näkyvät tokenit, eikä myös ajattelutokeneita, eikä max_tokens toimi uudemmissa malleissa
+                'temperature' => $temperature
+            ];
+            }
+            else {
+                $chatParams = [
+                'model' => $this->AI->model,
+                'messages' => [
+                    [
+                        'role' => 'user', 
+                        'content' => $prompt
+                    ],
+                ],
+                'max_completion_tokens' => $max_tokens
+            ];
+            }
+            $response = $this->AI->client->chat()->create($chatParams);
         $vastaus = $response->choices[0]->message->content;
-        $file = fopen($tiedostonPolku, 'w');
-        fwrite($file, $vastaus);
-        fclose($file);
+        if($this->savetoCache) {
+            $file = fopen($tiedostonPolku, 'w');
+            fwrite($file, $vastaus);
+            fclose($file);
+        }
         return [true, $vastaus];
         } catch (\GuzzleHttp\Exception\ClientException $e) {
         $statusCode = $e->getResponse()->getStatusCode();
@@ -78,16 +204,32 @@ class AIOpenAI {
         }
         
     }
-    function chattays($arvot, $chathistory, $temperature = 0.8, $max_tokens = null) {
+    function chattays($arvot, $chathistory, $temperature = null, $max_tokens = null) {
+        if(is_null($temperature)) {
+            $temperature = $this->temperature;
+        }
+        if(is_null($max_tokens)) {
+            $max_tokens = $this->max_tokens;
+        }
         $prompt = $this->AI->suoritaMuotoilu($arvot);
         try {
             $messages = array_merge($chathistory, [['role' => 'user', 'content' => $prompt]]);
-            $response = $this->AI->client->chat()->create([
+            if($temperature) {
+                $chatParams = [
                 'model' => $this->AI->model,
                 'messages' => $messages,
-                'max_tokens' => $max_tokens,
-                'temperature' => $temperature,
-            ]);
+                'max_completion_tokens' => $max_tokens,
+                'temperature' => $temperature
+            ];
+            }
+            else {
+                $chatParams = [
+                'model' => $this->AI->model,
+                'messages' => $messages,
+                'max_completion_tokens' => $max_tokens
+            ];
+            }
+            $response = $this->AI->client->chat()->create($chatParams);
             $vastaus = $response->choices[0]->message->content;
             $chathistory = array_merge($chathistory, [
                 ['role' => 'user', 'content' => $prompt],
@@ -108,7 +250,13 @@ class AIOpenAI {
         }
 
     }
-    function suoritaHaku($arvot, $filePath = null, $temperature = 0.8, $max_tokens = null, $haetaankoAiempi = true) {
+    function suoritaHaku($arvot, $filePath = null, $temperature = null, $max_tokens = null, $haetaankoAiempi = true) {
+        if(is_null($temperature)) {
+            $temperature = $this->temperature;
+        }
+        if(is_null($max_tokens)) {
+            $max_tokens = $this->max_tokens;
+        }
         $prompt = $this->AI->suoritaMuotoilu($arvot);
         try {
             if ($filePath == null) {
@@ -120,21 +268,38 @@ class AIOpenAI {
                     fclose($file);
                     return [true, $vastaus];
                 }
-                $response = $this->AI->client->chat()->create([
-                'model' => $this->AI->model,
-                'messages' => [
-                    [
-                        'role' => 'user', 
-                        'content' => $prompt
+                if($temperature) {
+                    $chatParams = [
+                    'model' => $this->AI->model,
+                    'messages' => [
+                        [
+                            'role' => 'user', 
+                            'content' => $prompt
+                        ],
                     ],
-                ],
-                'max_tokens' => $max_tokens,
-                'temperature' => $temperature,
-                ]);
+                    'max_completion_tokens' => $max_tokens,
+                    'temperature' => $temperature
+                ];
+                }
+                else {
+                    $chatParams = [
+                    'model' => $this->AI->model,
+                    'messages' => [
+                        [
+                            'role' => 'user', 
+                            'content' => $prompt
+                        ],
+                    ],
+                    'max_completion_tokens' => $max_tokens
+                ];
+                }
+                $response = $this->AI->client->chat()->create($chatParams);
                 $vastaus = $response->choices[0]->message->content;
-                $file = fopen($tiedostonPolku, 'w');
-                fwrite($file, $vastaus);
-                fclose($file);
+                if($this->savetoCache) {
+                    $file = fopen($tiedostonPolku, 'w');
+                    fwrite($file, $vastaus);
+                    fclose($file);
+                }
                 return [true, $vastaus, "total_tokens" => $response->usage->totalTokens];
             } else {
                 $promptHash = md5($prompt);
@@ -174,13 +339,15 @@ class AIOpenAI {
                 $response = $this->AI->client->chat()->create([
                     'model' => $this->AI->model,
                     'messages' => $messages,
-                    'max_tokens' => $max_tokens,
+                    'max_completion_tokens' => $max_tokens,
                     'temperature' => $temperature,
                 ]);
                 $vastaus = $response->choices[0]->message->content;
-                $file = fopen($tiedostonPolku, 'w');
-                fwrite($file, $vastaus);
-                fclose($file);
+                if($this->savetoCache) {
+                    $file = fopen($tiedostonPolku, 'w');
+                    fwrite($file, $vastaus);
+                    fclose($file);
+                }
                 return [true, $vastaus, "total_tokens" => $response->usage->totalTokens];
             }
         } catch (\GuzzleHttp\Exception\ClientException $e) {
@@ -209,7 +376,13 @@ class AIOpenAI {
      * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-1.0)
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
      */
-    function tiedostoHaku1($prompt, $filePath, $temperature = 0.8, $max_tokens = null) {
+    function tiedostoHaku1($prompt, $filePath, $temperature = null, $max_tokens = null) {
+        if(is_null($temperature)) {
+            $temperature = $this->temperature;
+        }
+        if(is_null($max_tokens)) {
+            $max_tokens = $this->max_tokens;
+        }
         $promptHash = md5($prompt);
         $filePathHash = md5($filePath);
         $tiedostonPolku = $this->AI->temp_dir . '/openai_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $this->AI->model . '_' . $temperature . '_' . $max_tokens . '.txt';
@@ -248,13 +421,15 @@ class AIOpenAI {
             $response = $this->AI->client->chat()->create([
                 'model' => $this->AI->model,
                 'messages' => $messages,
-                'max_tokens' => $max_tokens,
+                'max_completion_tokens' => $max_tokens,
                 'temperature' => $temperature,
             ]);
             $vastaus = $response->choices[0]->message->content;
-            $file = fopen($tiedostonPolku, 'w');
-            fwrite($file, $vastaus);
-            fclose($file);
+            if($this->savetoCache) {
+                $file = fopen($tiedostonPolku, 'w');
+                fwrite($file, $vastaus);
+                fclose($file);
+            }
             return [true, $vastaus];
         } catch (\Exception $e) {
             if ($e->getErrorCode() === 429) {
@@ -277,6 +452,9 @@ class AIOpenAI {
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
      */
     function strukturoituHaku($prompt, $jsonSchema, $temperature = 0.0, $max_tokens = null) {
+        if(is_null($max_tokens)) {
+            $max_tokens = $this->max_tokens;
+        }
         $schemaJson = json_encode($this->jsonSchemas[$jsonSchema]);
         $prompt = str_replace("[Schema]", $schemaJson, $prompt);
         $promptHash = md5($prompt);
@@ -298,7 +476,7 @@ class AIOpenAI {
                     'content' => $prompt
                 ],
             ],
-            'max_tokens' => $max_tokens,
+            'max_completion_tokens' => $max_tokens,
             'temperature' => $temperature,
             'response_format' => [
                 'type' => 'json_object'
@@ -309,9 +487,11 @@ class AIOpenAI {
         if (json_last_error() !== JSON_ERROR_NONE) {
             return [false, "Invalid JSON response"];
         }
-        $file = fopen($tiedostonPolku, 'w');
-        fwrite($file, $vastaus);
-        fclose($file);
+        if($this->savetoCache) {
+            $file = fopen($tiedostonPolku, 'w');
+            fwrite($file, $vastaus);
+            fclose($file);
+        }
         return [true, $parsed];
         } catch (\Exception $e) {
             if ($e->getErrorCode() === 429) {
@@ -346,7 +526,7 @@ class AIOpenAI {
             $response = $this->AI->client->chat()->create([
                 'model' => $modelName,
                 'messages' => [['role' => 'user', 'content' => 'Test']],
-                'max_tokens' => 1,  // Minimal to avoid token waste
+                'max_completion_tokens' => 1,  // Minimal to avoid token waste
                 'temperature' => 0.0
             ]);
             return [true, null];  // If no exception, model exists

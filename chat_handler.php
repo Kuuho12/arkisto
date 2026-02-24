@@ -75,9 +75,9 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
                 exit;
             }
             $markdownToHtml = gemtextToHtml($vastaus[1]);
-            $vastausFile = fopen("temp_ai/gemini_". $chatti_id . "_" . count($_SESSION['chat_history'][$chatti_id])  . ".txt", 'w');
+            /*$vastausFile = fopen("temp_ai/gemini_". $chatti_id . "_" . count($_SESSION['chat_history'][$chatti_id])  . ".txt", 'w');
             fwrite($vastausFile, $vastaus[1]);
-            fclose($vastausFile);
+            fclose($vastausFile);*/
             echo json_encode(['status' => 'success', 'vastaus' => $markdownToHtml]);
         } else if ($api === "Hugging Face") {
             $AI = new Ai(getenv('HF_TOKEN'), "huggingface", $malli);

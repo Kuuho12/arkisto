@@ -22,8 +22,10 @@ class AIHuggingface {
         'required' => ['recipes']
     ]
     ];
-    public function __construct($AIData) { /*$apiKey, $model = "deepseek-ai/DeepSeek-V3.2:novita"*/
+    private $savetoCache;
+    public function __construct($AIData, $savetoCache = false) { /*$apiKey, $model = "deepseek-ai/DeepSeek-V3.2:novita"*/
         $this->AI = $AIData;
+        $this->savetoCache = $savetoCache;
     }
     /**
      * Suorittaa tekstihakun tekoälyrajapintaan tai hakee valmiin vastauksen välimuistista.
@@ -62,9 +64,11 @@ class AIHuggingface {
             'temperature' => $temperature,
         ]);
         $vastaus = $response->choices[0]->message->content;
-        $file = fopen($tiedostonPolku, 'w');
-        fwrite($file, $vastaus);
-        fclose($file);
+        if($this->savetoCache) {
+            $file = fopen($tiedostonPolku, 'w');
+            fwrite($file, $vastaus);
+            fclose($file);
+        }
         return [true, $vastaus];
         } catch (\GuzzleHttp\Exception\ClientException $e) {
         $statusCode = $e->getResponse()->getStatusCode();
@@ -137,9 +141,11 @@ class AIHuggingface {
                 'temperature' => $temperature,
                 ]);
                 $vastaus = $response->choices[0]->message->content;
-                $file = fopen($tiedostonPolku, 'w');
-                fwrite($file, $vastaus);
-                fclose($file);
+                if($this->savetoCache) {
+                    $file = fopen($tiedostonPolku, 'w');
+                    fwrite($file, $vastaus);
+                    fclose($file);
+                }
                 return [true, $vastaus, "total_tokens" => $response->usage->totalTokens];
             } else {
                 $promptHash = md5($prompt);
@@ -186,9 +192,11 @@ class AIHuggingface {
                     'temperature' => $temperature,
                 ]);
                 $vastaus = $response->choices[0]->message->content;
-                $file = fopen($tiedostonPolku, 'w');
-                fwrite($file, $vastaus);
-                fclose($file);
+                if($this->savetoCache) {
+                    $file = fopen($tiedostonPolku, 'w');
+                    fwrite($file, $vastaus);
+                    fclose($file);
+                }
                 return [true, $vastaus, "total_tokens" => $response->usage->totalTokens];
             }
         } catch (\GuzzleHttp\Exception\ClientException $e) {
@@ -236,7 +244,7 @@ class AIHuggingface {
             return [false, "Tiedostoa ei löytynyt: " . $filePath];
         }
         $mimeType = mime_content_type($filePath);
-        
+
         try {
             if (strpos($mimeType, 'text/') === 0) {
                 // Text file: read content and append to prompt
@@ -263,9 +271,11 @@ class AIHuggingface {
                 'temperature' => $temperature,
             ]);
             $vastaus = $response->choices[0]->message->content;
-            $file = fopen($tiedostonPolku, 'w');
-            fwrite($file, $vastaus);
-            fclose($file);
+            if($this->savetoCache) {
+                $file = fopen($tiedostonPolku, 'w');
+                fwrite($file, $vastaus);
+                fclose($file);
+            }
             return [true, $vastaus];
         } catch (\Exception $e) {
             if ($e->getErrorCode() === 429) {
@@ -322,9 +332,11 @@ class AIHuggingface {
         if (json_last_error() !== JSON_ERROR_NONE) {
             return [false, "Invalid JSON response"];
         }
-        $file = fopen($tiedostonPolku, 'w');
-        fwrite($file, $vastaus);
-        fclose($file);
+        if($this->savetoCache) {
+            $file = fopen($tiedostonPolku, 'w');
+            fwrite($file, $vastaus);
+            fclose($file);
+        }
         return [true, $parsed];
         } catch (\Exception $e) {
             if ($e->getErrorCode() === 429) {

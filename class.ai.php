@@ -14,25 +14,27 @@ class Ai {
     public $valittuEsivalmisteltuKysely;
     public $files = array();
     public $temp_dir = "temp_ai";
-    public function __construct($apiKey, $api = "gemini", $model = null)
+    private $savetoCache;
+    public function __construct($apiKey, $api = "gemini", $model = null, $savetoCache = false)
     {
         $this->apiKey = $apiKey;
         $this->model = $model;
+        $this->savetoCache = $savetoCache;
         $this->valittuEsivalmisteltuKysely = $this->esivalmistellutKyselyt["default"];
         if($api === "huggingface") {
             $this->client = OpenAI::factory()
                 ->withApiKey($this->apiKey)
                 ->withBaseUri('https://router.huggingface.co/v1')
                 ->make();
-            $this->childClass = new AIHuggingface($this);
+            $this->childClass = new AIHuggingface($this, $savetoCache);
         }
         else if ($api === "openai") {
             $this->client = OpenAI::client($this->apiKey);
-            $this->childClass = new AIOpenAI($this);
+            $this->childClass = new AIOpenAI($this, $savetoCache);
         }
         else if ($api === "gemini") {
             $this->client = \Gemini::client($this->apiKey);
-            $this->childClass = new AIGemini($this);
+            $this->childClass = new AIGemini($this, $savetoCache);
         }
     }
     /**
@@ -57,8 +59,8 @@ class Ai {
         }
         return $prompt;
     }
-    function suoritaHaku($arvot) {
-        return $this->childClass->suoritaHaku($arvot);
+    function suoritaHaku($arvot, ...$extraParametrit) {
+        return $this->childClass->suoritaHaku($arvot, ...$extraParametrit);
     }
     /**
      * Muotoilee promptin esivalmistellun kyselyn pohjalta ja antaa lapsiluokan hoitaa tiedostohaun loppuun.
@@ -76,7 +78,7 @@ class Ai {
         if (method_exists($this->childClass, 'tiedostoHaku1')) {
             return $this->childClass->tiedostoHaku1($prompt, $filePath, ...$extraParametrit);
         } else {
-        return $this->childClass->tiedostoHaku2($prompt);
+        return $this->childClass->tiedostoHaku2($prompt, ...$extraParametrit);
         }
     }
     /**

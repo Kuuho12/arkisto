@@ -517,13 +517,18 @@ class AIGemini {
 
 function applyInlineFormatting(string $text): string
 {
-    // Then escape HTML special characters for the rest of the text
+    // Extract code blocks to prevent formatting inside them
+    $codeBlocks = [];
+    $text = preg_replace_callback('/(?<!`)`((?:[^`]|```)+)`(?!`)/', function($matches) use (&$codeBlocks) { // '/`(.+?)`/' on toiseksi paras
+        $placeholder = '{{CODEBLOCK-' . count($codeBlocks) . '}}';
+        $codeBlocks[] = $matches[1];
+        return $placeholder;
+    }, $text);
+
+    // Escape HTML special characters for the rest of the text
     $text = htmlspecialchars($text, ENT_SUBSTITUTE, 'UTF-8');
 
-    // Replace `text` with <code>code</code>
-    $text = preg_replace('/`(.+?)`/', '<code>$1</code>', $text);
-
-    // Replace [link text](url) or [link text](url 'title') with <a> tags BEFORE general escaping
+    // Replace [link text](url) or [link text](url 'title') with <a> tags
     $text = preg_replace_callback('/\[(.+?)\]\(([^)]+)\)/', function($matches) {
         $linkText = htmlspecialchars($matches[1], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $urlAndTitle = $matches[2];
@@ -553,6 +558,12 @@ function applyInlineFormatting(string $text): string
 
     // Replace ~text~ with <s>strikethrough</s>
     $text = preg_replace('/~(.+?)~/', '<s>$1</s>', $text);
+
+    // Restore code blocks
+    foreach ($codeBlocks as $index => $code) {
+        $placeholder = '{{CODEBLOCK-' . $index . '}}';
+        $text = str_replace($placeholder, '<code>' . htmlspecialchars($code, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</code>', $text);
+    }
     
     return $text;
 }

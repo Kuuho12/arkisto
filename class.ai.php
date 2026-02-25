@@ -2,6 +2,7 @@
 require_once 'vendor/autoload.php';
 class Ai {
     public $apiKey;
+    public $api;
     public $client;
     public $model;
     public $childClass;
@@ -21,20 +22,26 @@ class Ai {
         $this->model = $model;
         $this->savetoCache = $savetoCache;
         $this->valittuEsivalmisteltuKysely = $this->esivalmistellutKyselyt["default"];
-        if($api === "huggingface") {
+        $this->setAPi($api);
+    }
+    public function setAPi($api) {
+        $this->api = $api;
+        switch($api) {
+        case "huggingface":
             $this->client = OpenAI::factory()
                 ->withApiKey($this->apiKey)
                 ->withBaseUri('https://router.huggingface.co/v1')
                 ->make();
-            $this->childClass = new AIHuggingface($this, $savetoCache);
-        }
-        else if ($api === "openai") {
+            $this->childClass = new AIHuggingface($this, $this->savetoCache);
+            break;
+        case "openai":
             $this->client = OpenAI::client($this->apiKey);
-            $this->childClass = new AIOpenAI($this, $savetoCache);
-        }
-        else if ($api === "gemini") {
+            $this->childClass = new AIOpenAI($this, $this->savetoCache);
+            break;
+        case "gemini":
             $this->client = \Gemini::client($this->apiKey);
-            $this->childClass = new AIGemini($this, $savetoCache);
+            $this->childClass = new AIGemini($this, $this->savetoCache);
+            break;
         }
     }
     /**

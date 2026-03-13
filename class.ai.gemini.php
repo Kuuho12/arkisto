@@ -681,32 +681,42 @@ function gemtextToHtml(string $input): string
     $listStack = []; // Stack of list types at each nesting level
     $blockquoteStack = []; // Stack for nested blockquotes
     $spacesPerIndent = 3; // Number of spaces per indent level
+    $preIndent = 0; // Indent level of current <pre> block
 
     $i = 0;
     while ($i < count($lines)) {
         $rawLine = $lines[$i];
+        $trimmedLine = trim($rawLine);
 
-        // Preformatted block ```
-        if (trim($rawLine) === '```') {
-            // Close all open lists before pre block
-            while (!empty($listStack)) {
-                $listType = array_pop($listStack);
-                $html .= "</{$listType}>\n";
-            }
+        // Preformatted block ``` (only if nothing follows the fence)
+        if (preg_match('/^(\s*)```[ \t]*$/', $rawLine, $m)) {
+            // Close all blockquotes before pre block
             while (!empty($blockquoteStack)) {
                 array_pop($blockquoteStack);
                 $html .= "</blockquote>\n";
             }
 
+            $indent = strlen($m[1]);
+            if(count($listStack) === 1 && $indent != 0) {
+                $spacesPerIndent = $indent; // Adjust spaces per indent based on first nested list
+            }
+            $nestLevel = floor($indent / $spacesPerIndent);
+
+            while (count($listStack) > $nestLevel) {
+                $listType = array_pop($listStack);
+                $html .= "</li></{$listType}>\n";
+            }
+
             if ($inPre === 0) {
                 $html .= "<pre><code>";
                 $inPre++;
+                $preIndent = $indent;
             } else {
                 $inPre--;
                 if ($inPre === 0) {
                     $html .= "</code></pre>\n";
                 } else {
-                    $html .= htmlspecialchars($rawLine, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "\n";
+                    $html .= htmlspecialchars(substr($rawLine, $preIndent), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "\n";
                 }
             }
 
@@ -715,12 +725,8 @@ function gemtextToHtml(string $input): string
         }
 
         // Preformatted block ``` + text
-        if (strpos(trim($rawLine), '```') === 0) {
-            // Close all open lists before pre block
-            while (!empty($listStack)) {
-                $listType = array_pop($listStack);
-                $html .= "</{$listType}>\n";
-            }
+        if (preg_match('/^(\s*)```(.+)$/', $rawLine, $m)) {
+            // Close all blockquotes before pre block
             while (!empty($blockquoteStack)) {
                 array_pop($blockquoteStack);
                 $html .= "</blockquote>\n";
@@ -728,9 +734,22 @@ function gemtextToHtml(string $input): string
 
             $inPre++;
             if ($inPre === 1) {
-                $html .= "<pre><code>";
+
+                $indent = strlen($m[1]);
+                if(count($listStack) === 1 && $indent != 0) {
+                    $spacesPerIndent = $indent; // Adjust spaces per indent based on first nested list
+                }
+                $nestLevel = floor($indent / $spacesPerIndent);
+
+                while (count($listStack) > $nestLevel) {
+                    $listType = array_pop($listStack);
+                    $html .= "</li></{$listType}>\n";
+                }
+                $preIndent = $indent;
+
+                $html .= '<pre><code class="language-' . htmlspecialchars(substr($trimmedLine, 3), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "\">";
             } else {
-                $html .= htmlspecialchars($rawLine, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "\n";
+                $html .= htmlspecialchars(substr($rawLine, $preIndent), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "\n";
             }
 
             $i++;
@@ -739,17 +758,17 @@ function gemtextToHtml(string $input): string
 
         // Inside <pre> - preserve whitespace
         if ($inPre > 0) {
-            $html .= htmlspecialchars($rawLine, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "\n";
+            $html .= htmlspecialchars(substr($rawLine, $preIndent), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "\n";
             $i++;
             continue;
         }
 
         // Empty line
-        if (trim($rawLine) === '') {
+        if ($trimmedLine === '') {
             // Close all open lists on empty line
             /*while (!empty($listStack)) {
                 $listType = array_pop($listStack);
-                $html .= "</{$listType}>\n";
+                $html .= "</li></{$listType}>\n";
             }*/
             // Close all blockquotes on empty line
             while (!empty($blockquoteStack)) {
@@ -765,7 +784,7 @@ function gemtextToHtml(string $input): string
             // Close all open lists before table
             while (!empty($listStack)) {
                 $listType = array_pop($listStack);
-                $html .= "</{$listType}>\n";
+                $html .= "</li></{$listType}>\n";
             }
             // Close all blockquotes before table
             while (!empty($blockquoteStack)) {
@@ -781,17 +800,22 @@ function gemtextToHtml(string $input): string
         }
 
         // Blockquotes > or > > or > > >
-        if (preg_match('/^((?:>\s*)+)(.*)$/', trim($rawLine), $m)) {
-            // Close all open lists before blockquote
-            while (!empty($listStack)) {
-                $listType = array_pop($listStack);
-                $html .= "</{$listType}>\n";
+        if (preg_match('/^(\s*)((?:>\s*)+)(.*)$/', $rawLine, $m)) {            
+            $indent = strlen($m[1]);
+            if(count($listStack) === 1 && $indent != 0) {
+                $spacesPerIndent = $indent; // Adjust spaces per indent based on first nested list
             }
-            
+            $nestLevel = floor($indent / $spacesPerIndent);
+
+            while (count($listStack) > $nestLevel) {
+                $listType = array_pop($listStack);
+                $html .= "</li></{$listType}>\n";
+            }
+
             // Count the nesting level of blockquotes
-            $blockquoteMarks = $m[1];
+            $blockquoteMarks = $m[2];
             $blockquoteLevel = substr_count($blockquoteMarks, '>');
-            $blockquoteText = trim($m[2]);
+            $blockquoteText = trim($m[3]);
             
             // Close blockquotes that are deeper than current level
             while (count($blockquoteStack) > $blockquoteLevel) {
@@ -816,7 +840,7 @@ function gemtextToHtml(string $input): string
             // Close all open lists before heading
             while (!empty($listStack)) {
                 $listType = array_pop($listStack);
-                $html .= "</{$listType}>\n";
+                $html .= "</li></{$listType}>\n";
             }
             // Close all blockquotes before heading
             while (!empty($blockquoteStack)) {
@@ -833,11 +857,11 @@ function gemtextToHtml(string $input): string
         }
 
         // Horizontal rule *** --- ___
-        if(trim($rawLine) === '***' || trim($rawLine) === '---' || trim($rawLine) === '___') {
+        if($trimmedLine === '***' || $trimmedLine === '---' || $trimmedLine === '___') {
             // Close all open lists before horizontal rule
             while (!empty($listStack)) {
                 $listType = array_pop($listStack);
-                $html .= "</{$listType}>\n";
+                $html .= "</li></{$listType}>\n";
             }
             // Close all blockquotes before horizontal rule
             while (!empty($blockquoteStack)) {
@@ -855,7 +879,7 @@ function gemtextToHtml(string $input): string
             // Close all open lists before link
             while (!empty($listStack)) {
                 $listType = array_pop($listStack);
-                $html .= "</{$listType}>\n";
+                $html .= "</li></{$listType}>\n";
             }
             // Close all blockquotes before link
             while (!empty($blockquoteStack)) {
@@ -890,29 +914,34 @@ function gemtextToHtml(string $input): string
             }
             // Adjust nesting level
             $nestLevel = intval($indent / $spacesPerIndent); // 0, 1, 2, 3... based on spaces. tab = 4 spaces,
-            
+
             // Close lists that are deeper than current level
             while (count($listStack) > $nestLevel + 1) {
                 $listType = array_pop($listStack);
-                $html .= "</{$listType}>\n";
+                $html .= "</li></{$listType}>\n";
             }
+        
+            if($nestLevel == count($listStack) - 1) { 
 
-            // Open new lists until we reach target nesting level
-            while (count($listStack) <= $nestLevel) {
-                $html .= "<ol>\n";
-                $listStack[] = 'ol';
+                if($listStack[count($listStack) - 1] !== 'ol') {
+                    // Close the last opened list if it's not ol
+                    $listType = array_pop($listStack);
+                    $html .= "</li></{$listType}>\n";
+                    // Open a new ol
+                    $html .= "<ol><li>{$item}\n";
+                    $listStack[] = 'ol';
+                } else {
+                    $html .= "</li><li>{$item}\n";
+                }
+
+            } else {
+                // Open new lists until we reach target nesting level
+                while (count($listStack) <= $nestLevel) {
+                    $html .= "<ol><li>\n";
+                    $listStack[] = 'ol';
+                }
+                $html .= "{$item}\n";
             }
-
-            if($listStack[count($listStack) - 1] !== 'ol') {
-                // Close the last opened list if it's not ol
-                $listType = array_pop($listStack);
-                $html .= "</{$listType}>\n";
-                // Open a new ol
-                $html .= "<ol>\n";
-                $listStack[] = 'ol';
-            }
-
-            $html .= "<li>{$item}</li>\n";
             $i++;
             continue;
         }
@@ -937,39 +966,44 @@ function gemtextToHtml(string $input): string
             // Close lists that are deeper than current level
             while (count($listStack) > $nestLevel + 1) {
                 $listType = array_pop($listStack);
-                $html .= "</{$listType}>\n";
+                $html .= "</li></{$listType}>\n";
             }
 
-            // Open new lists until we reach target nesting level
-            while (count($listStack) <= $nestLevel) {
-                $html .= "<ul>\n";
-                $listStack[] = 'ul';
-            }
+            if($nestLevel == count($listStack) - 1) {
 
-            if($listStack[count($listStack) - 1] !== 'ul') {
-                // Close the last opened list if it's not ul
-                $listType = array_pop($listStack);
-                $html .= "</{$listType}>\n";
-                // Open a new ul
-                $html .= "<ul>\n";
-                $listStack[] = 'ul';
-            }
+                if($listStack[count($listStack) - 1] !== 'ul') {
+                    // Close the last opened list if it's not ul
+                    $listType = array_pop($listStack);
+                    $html .= "</li></{$listType}>\n";
+                    // Open a new ul
+                    $html .= "<ul><li>{$item}\n";
+                    $listStack[] = 'ul';
+                } else {
+                    $html .= "</li><li>{$item}\n";
+                }
 
-            $html .= "<li>{$item}</li>\n";
+            } else {
+                // Open new lists until we reach target nesting level
+                while (count($listStack) <= $nestLevel) {
+                    $html .= "<ul><li>\n";
+                    $listStack[] = 'ul';
+                }
+                $html .= "{$item}\n";
+            }
             $i++;
             continue;
         }
 
         // Normal paragraph
-        // Close all open lists before paragraph
-        while (!empty($listStack)) {
-            $listType = array_pop($listStack);
-            $html .= "</{$listType}>\n";
-        }
         // Close all blockquotes before paragraph
         while (!empty($blockquoteStack)) {
             array_pop($blockquoteStack);
             $html .= "</blockquote>\n";
+        }
+        // Close all open lists before paragraph
+        while (!empty($listStack)) {
+            $listType = array_pop($listStack);
+            $html .= "</li></{$listType}>\n";
         }
 
         $text = applyInlineFormatting(rtrim($rawLine));
@@ -977,10 +1011,9 @@ function gemtextToHtml(string $input): string
         $i++;
     }
 
-    // Close all remaining open lists
-    while (!empty($listStack)) {
-        $listType = array_pop($listStack);
-        $html .= "</{$listType}>\n";
+    // Close open pre
+    if ($inPre > 0) {
+        $html .= "</code></pre>\n";
     }
 
     // Close all remaining open blockquotes
@@ -988,10 +1021,11 @@ function gemtextToHtml(string $input): string
         array_pop($blockquoteStack);
         $html .= "</blockquote>\n";
     }
-
-    // Close open pre
-    if ($inPre > 0) {
-        $html .= "</code></pre>\n";
+    
+    // Close all remaining open lists
+    while (!empty($listStack)) {
+        $listType = array_pop($listStack);
+        $html .= "</li></{$listType}>\n";
     }
 
     return $html;

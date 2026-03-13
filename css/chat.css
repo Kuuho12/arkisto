@@ -49,8 +49,8 @@ strong {
     color: #3c3b3b;
 }
 #chatWindow {
-    height: 400px;
-    /*height: 800px;*/ 
+    /*height: 400px;*/
+    height: 800px;
     width: 100%;
     overflow-y: scroll; 
     display: flex;

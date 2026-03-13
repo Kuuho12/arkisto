@@ -601,9 +601,9 @@ function parseMarkdownTable(array &$lines, int $startIndex): array
     }
 
     $separatorCells = array_filter(array_map('trim', explode('|', $separatorLine)), fn($v) => $v !== '');
-    
+
     // Verify separator line has valid markdown table separators
-    $alignments = [];
+    $alignments = [0 => ''];
     foreach ($separatorCells as $cell) {
         if (!preg_match('/^:?-+:?$/', $cell)) {
             return ['', $startIndex];
@@ -772,10 +772,12 @@ function gemtextToHtml(string $input): string
                 array_pop($blockquoteStack);
                 $html .= "</blockquote>\n";
             }
-            
-            list($tableHtml, $i) = parseMarkdownTable($lines, $i);
+            $vanhaI = $i;
+            list($tableHtml, $i) = parseMarkdownTable($lines, $i); //epäoptimaalia lähettää jokainen rivi
             $html .= $tableHtml;
-            continue;
+            if($i != $vanhaI) {
+                continue;
+            }
         }
 
         // Blockquotes > or > > or > > >
@@ -844,6 +846,7 @@ function gemtextToHtml(string $input): string
             }
 
             $html .= "<hr />\n";
+            $i++;
             continue;
         }
 

@@ -37,21 +37,22 @@ class AIHuggingface {
      * Koodi palauttaa listan, jonka esimmäinen osa on boolean, joka kertoo onnistuiko haku ja toinen osa haun tuloksen tai virheilmoituksen.
      * 
      * @param string $prompt Tekoälylle lähetettävä kysely
-     * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-1.0)
+     * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-2.0)
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
+     * @param bool $haetaankoAiempi Määrää haetaanko aiemmin tallennettu vastaus, joka tehtiin samalla promptilla, tiedostolla, mallilla, lämpötilalla ja max_tokens-arvolla
      */
-    public function tekstiHaku($prompt, $temperature = null, $max_tokens = null, $haetaankoAiempi = true)
+    public function tekstiHaku($prompt, $temperature = null, $max_tokens = null, $haetaankoAiempi = false)
     {
-        if(is_null($temperature)) {
-            $temperature = $this->temperature;
+        if(!is_null($temperature)) {
+            $this->temperature = $temperature;
         }
-        if(is_null($max_tokens)) {
-            $max_tokens = $this->max_tokens;
+        if(!is_null($max_tokens)) {
+            $this->max_tokens = $max_tokens;
         }
         $promptHash = md5($prompt);
         $parts = explode(':', $this->AI->model);
         $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = $this->AI->temp_dir . '/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+        $tiedostonPolku = $this->AI->temp_dir . '/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $this->temperature . '_' . $this->max_tokens . '.txt';
         if(file_exists($tiedostonPolku) && $haetaankoAiempi) {
             $file = fopen($tiedostonPolku, 'r');
             $vastaus = fread($file, filesize($tiedostonPolku));
@@ -68,8 +69,9 @@ class AIHuggingface {
                     'content' => $prompt
                 ],
             ],
-            'max_tokens' => $max_tokens,
-            'temperature' => $temperature,
+            'max_tokens' => $this->max_tokens,
+            'temperature' => $this->temperature,
+            'n' => 1
         ]);
         $vastaus = $response->choices[0]->message->content;
         if($this->savetoCache) {
@@ -77,13 +79,13 @@ class AIHuggingface {
             fwrite($file, $vastaus);
             fclose($file);
         }
-        return [true, $vastaus];
+        return [true, $vastaus, "total_tokens" => $response->usage->totalTokens];
         } catch (\GuzzleHttp\Exception\ClientException $e) {
-        $statusCode = $e->getResponse()->getStatusCode();
-        if ($statusCode === 429) {
-            return [null, "Rate limit exceeded. Please try again later."];
-        }
-        return [false, "HTTP Error $statusCode: " . $e->getMessage()];
+            $statusCode = $e->getResponse()->getStatusCode();
+            if ($statusCode === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
+            return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
             if ($e->getErrorCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
@@ -93,11 +95,11 @@ class AIHuggingface {
         
     }
     function chattays($arvot, $chathistory, $temperature = null, $max_tokens = null) {
-        if(is_null($temperature)) {
-            $temperature = $this->temperature;
+        if(!is_null($temperature)) {
+            $this->temperature = $temperature;
         }
-        if(is_null($max_tokens)) {
-            $max_tokens = $this->max_tokens;
+        if(!is_null($max_tokens)) {
+            $this->max_tokens = $max_tokens;
         }
         $prompt = $this->AI->suoritaMuotoilu($arvot);
         try {
@@ -105,8 +107,8 @@ class AIHuggingface {
             $response = $this->AI->client->chat()->create([
                 'model' => $this->AI->model,
                 'messages' => $messages,
-                'max_tokens' => $max_tokens,
-                'temperature' => $temperature,
+                'max_tokens' => $this->max_tokens,
+                'temperature' => $this->temperature,
             ]);
             $vastaus = $response->choices[0]->message->content;
             $chathistory = array_merge($chathistory, [
@@ -115,11 +117,11 @@ class AIHuggingface {
             ]);
             return [true, $vastaus, $chathistory];
         } catch (\GuzzleHttp\Exception\ClientException $e) {
-        $statusCode = $e->getResponse()->getStatusCode();
-        if ($statusCode === 429) {
-            return [null, "Rate limit exceeded. Please try again later."];
-        }
-        return [false, "HTTP Error $statusCode: " . $e->getMessage()];
+            $statusCode = $e->getResponse()->getStatusCode();
+            if ($statusCode === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
+            return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
             if ($e->getErrorCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
@@ -128,12 +130,12 @@ class AIHuggingface {
         }
 
     }
-    function suoritaHaku($arvot, $filePath = null, $temperature = null, $max_tokens = null, $haetaankoAiempi = true) {
-        if(is_null($temperature)) {
-            $temperature = $this->temperature;
+    function suoritaHaku($arvot, $filePath = null, $temperature = null, $max_tokens = null, $haetaankoAiempi = false) {
+        if(!is_null($temperature)) {
+            $this->temperature = $temperature;
         }
-        if(is_null($max_tokens)) {
-            $max_tokens = $this->max_tokens;
+        if(!is_null($max_tokens)) {
+            $this->max_tokens = $max_tokens;
         }
         $prompt = $this->AI->suoritaMuotoilu($arvot);
         try {
@@ -141,7 +143,7 @@ class AIHuggingface {
                 $promptHash = md5($prompt);
                 $parts = explode(':', $this->AI->model);
                 $model = str_replace("/", "-", $parts[0]);
-                $tiedostonPolku = $this->AI->temp_dir . '/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+                $tiedostonPolku = $this->AI->temp_dir . '/hf_tekstihaku_' . $promptHash . '_' . $model . '_' . $this->temperature . '_' . $this->max_tokens . '.txt';
                 if(file_exists($tiedostonPolku) && $haetaankoAiempi) {
                     $file = fopen($tiedostonPolku, 'r');
                     $vastaus = fread($file, filesize($tiedostonPolku));
@@ -157,8 +159,9 @@ class AIHuggingface {
                         'content' => $prompt
                     ],
                 ],
-                'max_tokens' => $max_tokens,
-                'temperature' => $temperature,
+                'max_tokens' => $this->max_tokens,
+                'temperature' => $this->temperature,
+                'n' => 1
                 ]);
                 $vastaus = $response->choices[0]->message->content;
                 if($this->savetoCache) {
@@ -172,7 +175,7 @@ class AIHuggingface {
                 $filePathHash = md5($filePath);
                 $parts = explode(':', $this->AI->model);
                 $model = str_replace("/", "-", $parts[0]);
-                $tiedostonPolku = $this->AI->temp_dir . '/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+                $tiedostonPolku = $this->AI->temp_dir . '/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $this->temperature . '_' . $this->max_tokens . '.txt';
 
                 if(file_exists($tiedostonPolku) && $haetaankoAiempi) {
                     $file = fopen($tiedostonPolku, 'r');
@@ -208,8 +211,8 @@ class AIHuggingface {
                 $response = $this->AI->client->chat()->create([
                     'model' => $this->AI->model,
                     'messages' => $messages,
-                    'max_tokens' => $max_tokens,
-                    'temperature' => $temperature,
+                    'max_tokens' => $this->max_tokens,
+                    'temperature' => $this->temperature,
                 ]);
                 $vastaus = $response->choices[0]->message->content;
                 if($this->savetoCache) {
@@ -220,11 +223,11 @@ class AIHuggingface {
                 return [true, $vastaus, "total_tokens" => $response->usage->totalTokens];
             }
         } catch (\GuzzleHttp\Exception\ClientException $e) {
-        $statusCode = $e->getResponse()->getStatusCode();
-        if ($statusCode === 429) {
-            return [null, "Rate limit exceeded. Please try again later."];
-        }
-        return [false, "HTTP Error $statusCode: " . $e->getMessage()];
+            $statusCode = $e->getResponse()->getStatusCode();
+            if ($statusCode === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
+            return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
             if ($e->getErrorCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
@@ -235,30 +238,31 @@ class AIHuggingface {
     /**
      * Suorittaa tiedostohaun tekoälyrajapintaan tai hakee valmiin vastauksen, tukee teksti- ja kuva-tiedostoja.
      * 
-     * Toimii vain tietyillä malleilla (esim. google/gemma-3-27b-it:nebius tai zai-org/GLM-4.6V-Flash:novita)
+     * Toimii vain tietyillä malleilla (esim. google/gemma-3-27b-it:featherless-ai tai zai-org/GLM-4.6V-Flash:novita)
      * Koodi aluksi tarkistaa onko juuri samanlaisen haun vastaus välimuistissa. Jos on, se lataa vastauksen tiedostosta ja palauttaa sen.
      * Muuten se suorittaa haun Hugging Face API:iin ja tallentaa vastauksen välimuistiin tulevia hakuja varten.
      * Koodi palauttaa listan, jonka esimmäinen osa on boolean, joka kertoo onnistuiko haku ja toinen osa haun tuloksen tai virheilmoituksen.
      * 
      * @param string $prompt Tekoälylle lähetettävä kysely
      * @param string $filePath Tiedoston polku, josta tiedosto haetaan
-     * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-1.0)
+     * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-2.0)
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
+     * @param bool $haetaankoAiempi Määrää haetaanko aiemmin tallennettu vastaus, joka tehtiin samalla promptilla, tiedostolla, mallilla, lämpötilalla ja max_tokens-arvolla
      */
-    function tiedostoHaku1($prompt, $filePath, $temperature = null, $max_tokens = null) {
-        if(is_null($temperature)) {
-            $temperature = $this->temperature;
+    function tiedostoHaku1($prompt, $filePath, $temperature = null, $max_tokens = null, $haetaankoAiempi = false) {
+        if(!is_null($temperature)) {
+            $this->temperature = $temperature;
         }
-        if(is_null($max_tokens)) {
-            $max_tokens = $this->max_tokens;
+        if(!is_null($max_tokens)) {
+            $this->max_tokens = $max_tokens;
         }
         $promptHash = md5($prompt);
         $filePathHash = md5($filePath);
         $parts = explode(':', $this->AI->model);
         $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = $this->AI->temp_dir . '/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
+        $tiedostonPolku = $this->AI->temp_dir . '/hf_tiedostohaku_' . $promptHash . '_' . $filePathHash . '_' . $model . '_' . $this->temperature . '_' . $this->max_tokens . '.txt';
 
-        if(file_exists($tiedostonPolku)) {
+        if(file_exists($tiedostonPolku) && $haetaankoAiempi) {
             $file = fopen($tiedostonPolku, 'r');
             $vastaus = fread($file, filesize($tiedostonPolku));
             fclose($file);
@@ -293,8 +297,8 @@ class AIHuggingface {
             $response = $this->AI->client->chat()->create([
                 'model' => $this->AI->model,
                 'messages' => $messages,
-                'max_tokens' => $max_tokens,
-                'temperature' => $temperature,
+                'max_tokens' => $this->max_tokens,
+                'temperature' => $this->temperature,
             ]);
             $vastaus = $response->choices[0]->message->content;
             if($this->savetoCache) {
@@ -302,7 +306,7 @@ class AIHuggingface {
                 fwrite($file, $vastaus);
                 fclose($file);
             }
-            return [true, $vastaus];
+            return [true, $vastaus, "total_tokens" => $response->usage->totalTokens];
         } catch (\Exception $e) {
             if ($e->getErrorCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
@@ -320,23 +324,21 @@ class AIHuggingface {
      * Koodi palauttaa listan, jonka esimmäinen osa on boolean, joka kertoo onnistuiko haku ja toinen osa haun tuloksen tai virheilmoituksen.
      * 
      * @param string $prompt Tekoälylle lähetettävä kysely
-     * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-1.0). Suositellaan pitämään arvossa 0.0, jotta tekoäly noudattaa JSON-skeemaa
+     * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-2.0). Suositellaan pitämään arvossa 0.0, jotta tekoäly noudattaa JSON-skeemaa
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
+     * @param bool $haetaankoAiempi Määrää haetaanko aiemmin tallennettu vastaus, joka tehtiin samalla promptilla, tiedostolla, mallilla, lämpötilalla ja max_tokens-arvolla
      */
-    function strukturoituHaku($prompt, $jsonSchema, $temperature = 0.0, $max_tokens = null) {
-        if(is_null($temperature)) {
-            $temperature = $this->temperature;
-        }
-        if(is_null($max_tokens)) {
-            $max_tokens = $this->max_tokens;
+    function strukturoituHaku($prompt, $jsonSchema, $temperature = 0.0, $max_tokens = null, $haetaankoAiempi = false) {
+        if(!is_null($max_tokens)) {
+            $this->max_tokens = $max_tokens;
         }
         $schemaJson = json_encode($this->jsonSchemas[$jsonSchema]);
         $prompt = str_replace("[Schema]", $schemaJson, $prompt);
         $promptHash = md5($prompt);
         $parts = explode(':', $this->AI->model);
         $model = str_replace("/", "-", $parts[0]);
-        $tiedostonPolku = $this->AI->temp_dir . '/hf_structuredhaku_' . $promptHash . '_' . $jsonSchema . '_' . $model . '_' . $temperature . '_' . $max_tokens . '.txt';
-        if(file_exists($tiedostonPolku)) {
+        $tiedostonPolku = $this->AI->temp_dir . '/hf_structuredhaku_' . $promptHash . '_' . $jsonSchema . '_' . $model . '_' . $temperature . '_' . $this->max_tokens . '.txt';
+        if(file_exists($tiedostonPolku) && $haetaankoAiempi) {
             $file = fopen($tiedostonPolku, 'r');
             $vastaus = fread($file, filesize($tiedostonPolku));
             $parsed = json_decode($vastaus, true);
@@ -346,30 +348,30 @@ class AIHuggingface {
         }
         try {
             $response = $this->AI->client->chat()->create([
-            'model' => $this->AI->model,
-            'messages' => [
-                [
-                    'role' => 'user', 
-                    'content' => $prompt
+                'model' => $this->AI->model,
+                'messages' => [
+                    [
+                        'role' => 'user', 
+                        'content' => $prompt
+                    ],
                 ],
-            ],
-            'max_tokens' => $max_tokens,
-            'temperature' => $temperature,
-            'response_format' => [
-                'type' => 'json_object'
-            ]
-        ]);
-        $vastaus = $response->choices[0]->message->content;
-        $parsed = json_decode($vastaus, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return [false, "Invalid JSON response"];
-        }
-        if($this->savetoCache) {
-            $file = fopen($tiedostonPolku, 'w');
-            fwrite($file, $vastaus);
-            fclose($file);
-        }
-        return [true, $parsed];
+                'max_tokens' => $this->max_tokens,
+                'temperature' => $this->temperature,
+                'response_format' => [
+                    'type' => 'json_object'
+                ]
+            ]);
+            $vastaus = $response->choices[0]->message->content;
+            $parsed = json_decode($vastaus, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return [false, "Invalid JSON response"];
+            }
+            if($this->savetoCache) {
+                $file = fopen($tiedostonPolku, 'w');
+                fwrite($file, $vastaus);
+                fclose($file);
+            }
+            return [true, $parsed, "total_tokens" => $response->usage->totalTokens];
         } catch (\Exception $e) {
             if ($e->getErrorCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];

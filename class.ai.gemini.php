@@ -15,6 +15,7 @@ class AIGemini {
     private $savetoCache;
     private $max_output_tokens = 5000;
     private $temperature = 1;
+    private $systemInstruction = "";
     private $mimeTypes = array(
         "image/png" => MimeType::IMAGE_PNG,
         "audio/mpeg" => MimeType::AUDIO_MP3,
@@ -39,17 +40,20 @@ class AIGemini {
      * Lopuksi tehdään haku Gemini API:iin. Onnistuessa palautetaan lista, joka sisältää truen ja tesktivastauksen, epäonnistuessa
      * lista, joka sisältää falsen ja virheilmoituksen.
      * 
-     * @param array $prompt Tekoälylle lähetettävä kysely
+     * @param string $prompt Tekoälylle lähetettävä kysely
      */
-    public function tekstiHaku($prompt, $temperature = null, $max_output_tokens = null, $haetaankoAiempi = true) {
-        if(is_null($temperature)) {
-            $temperature = $this->temperature;
+    public function tekstiHaku(string $prompt, $temperature = null, $max_output_tokens = null, $haetaankoAiempi = false, $systemInstruction = null) {
+        if(!is_null($temperature)) {
+            $this->temperature = $temperature;
         }
-        if(is_null($max_output_tokens)) {
-            $max_output_tokens = $this->max_output_tokens;
+        if(!is_null($max_output_tokens)) {
+            $this->max_output_tokens = $max_output_tokens;
+        }
+        if(!is_null($systemInstruction)) {
+            $this->systemInstruction = $systemInstruction;
         }
         $promptHash = md5($prompt);
-        $tiedostonPolku = $this->AI->temp_dir . "/gemini_tekstihaku_" . $promptHash . "_" . $this->AI->model . "_" . $temperature . "_" . $max_output_tokens . ".txt";
+        $tiedostonPolku = $this->AI->temp_dir . "/gemini_tekstihaku_" . $promptHash . "_" . $this->AI->model . "_" . $this->temperature . "_" . $this->max_output_tokens . ".txt";
         if($haetaankoAiempi && file_exists($tiedostonPolku)) {
             $file = fopen($tiedostonPolku, "r");
             $contents = fread($file, filesize($tiedostonPolku));
@@ -60,8 +64,9 @@ class AIGemini {
         $result = $this->AI->client
             ->generativeModel(model: $this->AI->model)
             ->withGenerationConfig(new GenerationConfig(
-                temperature: $temperature,
-                maxOutputTokens: $max_output_tokens))
+                temperature: $this->temperature,
+                maxOutputTokens: $this->max_output_tokens))
+            ->withSystemInstruction(Content::parse($this->systemInstruction))
             ->generateContent($prompt);
         $vastaus = $result->text();
         if($this->savetoCache) {
@@ -85,20 +90,24 @@ class AIGemini {
     }
     }
 
-    function chattays($arvot, $chathistory, $temperature = null, $max_output_tokens = null, $haetaankoAiempi = true) {
-        if(is_null($temperature)) {
-            $temperature = $this->temperature;
+    function chattays($arvot, $chathistory, $temperature = null, $max_output_tokens = null, $systemInstruction = null) {
+        if(!is_null($temperature)) {
+            $this->temperature = $temperature;
         }
-        if(is_null($max_output_tokens)) {
-            $max_output_tokens = $this->max_output_tokens;
+        if(!is_null($max_output_tokens)) {
+            $this->max_output_tokens = $max_output_tokens;
+        }
+        if(!is_null($systemInstruction)) {
+            $this->systemInstruction = $systemInstruction;
         }
         $prompt = $this->AI->suoritaMuotoilu($arvot);
         try {
             $chat = $this->AI->client
                 ->generativeModel(model: $this->AI->model)
                 ->withGenerationConfig(new GenerationConfig(
-                    temperature: $temperature,
-                    maxOutputTokens: $max_output_tokens))
+                    temperature: $this->temperature,
+                    maxOutputTokens: $this->max_output_tokens))
+                ->withSystemInstruction(Content::parse($this->systemInstruction))
                 ->startChat(history: $chathistory);
             $result = $chat->sendMessage($prompt);
             $vastaus = $result->text();
@@ -123,14 +132,17 @@ class AIGemini {
     /**
      * 
      */
-    function suoritaHaku($arvot, $temperature = null, $max_output_tokens = null, $haetaankoAiempi = true) {
-        if(is_null($temperature)) {
-            $temperature = $this->temperature;
+    function suoritaHaku($arvot, $temperature = null, $max_output_tokens = null, $haetaankoAiempi = false) {
+        if(!is_null($temperature)) {
+            $this->temperature = $temperature;
         }
-        if(is_null($max_output_tokens)) {
-            $max_output_tokens = $this->max_output_tokens;
+        if(!is_null($max_output_tokens)) {
+            $this->max_output_tokens = $max_output_tokens;
         }
-        $prompt = $this->AI->suoritaMuotoilu($arvot);
+        list($prompt, $systemInstruction) = $this->AI->suoritaMuotoilu($arvot);
+        if(!is_null($systemInstruction)) {
+            $this->systemInstruction = $systemInstruction;
+        }
         try {
             if(count($this->AI->files) > 0) {
                 $prompt = [$prompt];
@@ -153,15 +165,16 @@ class AIGemini {
                 $result = $this->AI->client
                     ->generativeModel(model: $this->AI->model)
                     ->withGenerationConfig(new GenerationConfig(
-                        temperature: $temperature,
-                        maxOutputTokens: $max_output_tokens))
+                        temperature: $this->temperature,
+                        maxOutputTokens: $this->max_output_tokens))
+                    ->withSystemInstruction(Content::parse($this->systemInstruction))
                     ->generateContent($prompt);
                 $vastaus = $result->text();
                 $totalTokes = $result->usageMetadata->totalTokenCount;
                 return [true, $vastaus, "total_tokens" => $totalTokes];
             } else {
                 $promptHash = md5($prompt);
-                $tiedostonPolku = $this->AI->temp_dir . "/gemini_tekstihaku_" . $promptHash . "_" . $this->AI->model . "_" . $temperature . "_" . $max_output_tokens . ".txt";
+                $tiedostonPolku = $this->AI->temp_dir . "/gemini_tekstihaku_" . $promptHash . "_" . $this->AI->model . "_" . $this->temperature . "_" . $this->max_output_tokens . ".txt";
                 if($haetaankoAiempi && file_exists($tiedostonPolku)) {
                     $file = fopen($tiedostonPolku, "r");
                     $contents = fread($file, filesize($tiedostonPolku));
@@ -172,8 +185,9 @@ class AIGemini {
                 $result = $this->AI->client
                     ->generativeModel(model: $this->AI->model)
                     ->withGenerationConfig(new GenerationConfig(
-                        temperature: $temperature,
-                        maxOutputTokens: $max_output_tokens))
+                        temperature: $this->temperature,
+                        maxOutputTokens: $this->max_output_tokens))
+                    ->withSystemInstruction(Content::parse($this->systemInstruction))
                     ->generateContent($prompt);
                 $vastaus = $result->text();
                 if($this->savetoCache) {
@@ -205,14 +219,17 @@ class AIGemini {
      * Lopuksi looppauksessa tiedoston data tallennetaan blobina prompt-listamuuttujaan. Looppauksen jälkeen tehdään haku Gemini API:iin promptilla.
      * Käsiteltävt tiedostot lisätään lisaaTiedosto-funktiolla
      * 
-     *  @param array $tekstiosa Tekoälylle lähetettävä kysely
+     *  @param string $prompt Tekoälylle lähetettävä kysely
      */
-    function tiedostoHaku2 ($prompt, $temperature = null, $max_output_tokens = null) {
-        if(is_null($temperature)) {
-            $temperature = $this->temperature;
+    function tiedostoHaku2 ($prompt, $temperature = null, $max_output_tokens = null, $systemInstruction = null) {
+        if(!is_null($temperature)) {
+            $this->temperature = $temperature;
         }
-        if(is_null($max_output_tokens)) {
-            $max_output_tokens = $this->max_output_tokens;
+        if(!is_null($max_output_tokens)) {
+            $this->max_output_tokens = $max_output_tokens;
+        }
+        if(!is_null($systemInstruction)) {
+            $this->systemInstruction = $systemInstruction;
         }
         $prompt = [$prompt];
         foreach ($this->AI->files as $tiedosto) {
@@ -235,8 +252,9 @@ class AIGemini {
             $result = $this->AI->client
             ->generativeModel(model: $this->AI->model)
             ->withGenerationConfig(new GenerationConfig(
-                temperature: $temperature,
-                maxOutputTokens: $max_output_tokens))
+                temperature: $this->temperature,
+                maxOutputTokens: $this->max_output_tokens))
+            ->withSystemInstruction(Content::parse($this->systemInstruction))
             ->generateContent($prompt);
             $vastaus = $result->text();
             $totalTokens = $result->usageMetadata->totalTokenCount;
@@ -289,7 +307,16 @@ class AIGemini {
             return [true, $file];
         }
     }
-    function filesApiHaku($prompt, $file, $temperature = 1, $max_output_tokens = null) { //Ei toimi
+    function filesApiHaku($prompt, $file, $temperature = 1, $max_output_tokens = null, $systemInstruction = null) { //Ei toimi
+        if(!is_null($temperature)) {
+            $this->temperature = $temperature;
+        }
+        if(!is_null($max_output_tokens)) {
+            $this->max_output_tokens = $max_output_tokens;
+        }
+        if(!is_null($systemInstruction)) {
+            $this->systemInstruction = $systemInstruction;
+        }
         $prompt = $this->AI->suoritaMuotoilu($prompt);
         try {
             $mime_type = $file->mimeType;
@@ -306,8 +333,9 @@ class AIGemini {
             $result = $this->AI->client
             ->generativeModel(model: $this->AI->model)
             ->withGenerationConfig(new GenerationConfig(
-                temperature: $temperature,
-                maxOutputTokens: $max_output_tokens))
+                temperature: $this->temperature,
+                maxOutputTokens: $this->max_output_tokens))
+            ->withSystemInstruction(Content::parse($this->systemInstruction))
             ->generateContent([
                 $prompt,
                 $uploadedFile
@@ -338,7 +366,10 @@ class AIGemini {
      * @param string $prompt Tekoälylle lähetettävä kysely
      * @param string $structure JSON-skeeman nimi, jolla haetaan tallennettu JSON-skeema
      */
-    function strukturoituHaku($prompt, $structure, $haetaankoAiempi = true) {
+    function strukturoituHaku($prompt, $structure, $haetaankoAiempi = false, $systemInstruction = null) {
+        if(!is_null($systemInstruction)) {
+            $this->systemInstruction = $systemInstruction;
+        }
         $valittuStructure = $this->structured_configs[$structure];
         $structureHash = md5(json_encode($valittuStructure));
         $promptHash = md5($prompt);
@@ -365,9 +396,11 @@ class AIGemini {
                     )
                 )
             )
+            ->withSystemInstruction(Content::parse($this->systemInstruction))
             ->generateContent($prompt);
             $vastaus = $result->text();
             $parsed = json_decode($vastaus, true);
+            $totalTokens = $result->usageMetadata->totalTokenCount;
             if (json_last_error() !== JSON_ERROR_NONE) {
                 return [false, "Invalid JSON response"];
             }
@@ -376,7 +409,7 @@ class AIGemini {
                 fwrite($file, $vastaus);
                 fclose($file);
             }
-            return [true, $parsed];
+            return [true, $parsed, "total_tokens" => $totalTokens];
         } catch (\GuzzleHttp\Exception\ClientException $e) {
         $statusCode = $e->getResponse()->getStatusCode();
         if ($statusCode === 429) {

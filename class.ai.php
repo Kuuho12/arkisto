@@ -18,14 +18,30 @@ class Ai {
     private $savetoCache;
     public function __construct($apiKey, $api = "gemini", $model = null, $savetoCache = false)
     {
-        $this->apiKey = $apiKey;
-        $this->model = $model;
-        $this->savetoCache = $savetoCache;
+        if(gettype($apiKey) === 'string') {
+            $this->apiKey = $apiKey;
+        } else {
+            throw new Exception("API key must be a string.");
+        }
+        if(gettype($model) === 'string') {
+            $this->model = $model;
+        } else {
+            $this->model = null;
+        }
+        if(gettype($savetoCache) === 'boolean') {
+            $this->savetoCache = $savetoCache;
+        } else {
+            $this->savetoCache = false;
+        }
         $this->valittuEsivalmisteltuKysely = $this->esivalmistellutKyselyt["default"];
         $this->setAPi($api);
     }
     public function setAPi($api) {
-        $this->api = $api;
+        if(gettype($api) === 'string') {
+            $this->api = $api;
+        } else {
+            throw new Exception("API must be a string.");
+        }
         switch($api) {
         case "huggingface":
             $this->client = OpenAI::factory()
@@ -52,19 +68,33 @@ class Ai {
      */
     function tekstiHaku($arvot, ...$extraParametrit) {
         $prompt = $this->valittuEsivalmisteltuKysely;
+        $systemInstruction = $arvot["systemInstruction"] ?? null;
+        unset($arvot["systemInstruction"]);
         $arvotCount = count($arvot);
         for($x = 1; $x <= $arvotCount; $x++) {
             $prompt = str_replace("%$x", $arvot[$x-1], $prompt);
+        }
+        if ($this->api === "gemini") {
+            $extraParametrit["systemInstruction"] = $systemInstruction;
+        } else {
+            $prompt = $systemInstruction ? "$systemInstruction $prompt" : $prompt;
         }
         return $this->childClass->tekstiHaku($prompt, ...$extraParametrit);
     }
     function suoritaMuotoilu($arvot) {
         $prompt = $this->valittuEsivalmisteltuKysely;
+        $systemInstruction = $arvot["systemInstruction"] ?? null;
+        unset($arvot["systemInstruction"]);
         $arvotCount = count($arvot);
         for($x = 1; $x <= $arvotCount; $x++) {
             $prompt = str_replace("%$x", $arvot[$x-1], $prompt);
         }
-        return $prompt;
+        if ($this->api === "gemini") {
+            return [$prompt, $systemInstruction];
+        } else {
+            $prompt = $systemInstruction ? "$systemInstruction $prompt" : $prompt;
+            return $prompt;
+        }
     }
     function suoritaHaku($arvot, ...$extraParametrit) {
         return $this->childClass->suoritaHaku($arvot, ...$extraParametrit);
@@ -78,9 +108,16 @@ class Ai {
      */
     function tiedostoHaku($arvot, $filePath = null, ...$extraParametrit) {
         $prompt = $this->valittuEsivalmisteltuKysely;
+        $systemInstruction = $arvot["systemInstruction"] ?? null;
+        unset($arvot["systemInstruction"]);
         $arvotCount = count($arvot);
         for($x = 1; $x <= $arvotCount; $x++) {
             $prompt = str_replace("%$x", $arvot[$x-1], $prompt);
+        }
+        if ($this->api === "gemini") {
+            $extraParametrit["systemInstruction"] = $systemInstruction;
+        } else {
+            $prompt = $systemInstruction ? "$systemInstruction $prompt" : $prompt;
         }
         if (method_exists($this->childClass, 'tiedostoHaku1')) {
             return $this->childClass->tiedostoHaku1($prompt, $filePath, ...$extraParametrit);
@@ -123,13 +160,20 @@ class Ai {
      * @param object $childClass Lapsiluokka, joka hoitaa haun loppuun
      * @param string $jsonSchema JSON-skeeman nimi, jolla haetaan lapsiluokan julkisesta listasta JSON-skeema
      */
-    function strukturoituHaku($arvot, $jsonSchema) {
+    function strukturoituHaku($arvot, $jsonSchema, ...$extraParametrit) {
         $prompt = $this->valittuEsivalmisteltuKysely;
+        $systemInstruction = $arvot["systemInstruction"] ?? null;
+        unset($arvot["systemInstruction"]);
         $arvotCount = count($arvot);
         for($x = 1; $x <= $arvotCount; $x++) {
             $prompt = str_replace("%$x", $arvot[$x-1], $prompt);
         }
-        return $this->childClass->strukturoituHaku($prompt, $jsonSchema);
+        if ($this->api === "gemini") {
+            $extraParametrit["systemInstruction"] = $systemInstruction;
+        } else {
+            $prompt = $systemInstruction ? "$systemInstruction $prompt" : $prompt;
+        }
+        return $this->childClass->strukturoituHaku($prompt, $jsonSchema, ...$extraParametrit);
     }
     /**
      * Valitsee esivalmistellun kyselyn avaimella. Palauttaa true, jos kysely löytyi ja valittiin, muuten false.

@@ -10,6 +10,8 @@ use Gemini\Data\Content;
 use Gemini\Enums\Role;
 use Gemini\Enums\FileState;
 use Gemini\Data\UploadedFile;
+use Gemini\Data\GoogleSearch;
+use Gemini\Data\Tool;
 class AIGemini {
     private $AI = null;
     private $savetoCache;
@@ -31,6 +33,30 @@ class AIGemini {
     public function __construct($AIData, $savetoCache = false) {
         $this->AI = $AIData;
         $this->savetoCache = $savetoCache;
+        $this->structured_configs = [
+            "Artikkeli" => [
+                "properties" => [
+                    "Otsikko" => new Schema(type: DataType::STRING),
+                    "Tekijät" => new Schema(type: DataType::ARRAY, items: new Schema(type: DataType::STRING)),
+                    "Tekijöiden organisaatiot" => new Schema(type: DataType::ARRAY, items: new Schema(type: DataType::STRING)),
+                    "Lehden nimi" => new Schema(type: DataType::STRING),
+                    "Julkaisuvuosi" => new Schema(type: DataType::INTEGER),
+                    "Esittely" => new Schema(type: DataType::STRING),
+                    "Kieli" => new Schema(type: DataType::STRING),
+                    "Maksullinen" => new Schema(type: DataType::BOOLEAN)
+                ], 
+                "required" => [
+                    "Otsikko",
+                    "Tekijät",
+                    "Tekijöiden organisaatiot",
+                    "Lehden nimi",
+                    "Julkaisuvuosi",
+                    "Esittely",
+                    "Kieli",
+                    "Maksullinen"
+                ]
+            ]
+        ];
     }
     /**
      * Tekee haun Gemini API:iin käyttäen haun pohjana aiemmin valittua esivalmisteltua kyselyä
@@ -53,7 +79,8 @@ class AIGemini {
             $this->systemInstruction = $systemInstruction;
         }
         $promptHash = md5($prompt);
-        $tiedostonPolku = $this->AI->temp_dir . "/gemini_tekstihaku_" . $promptHash . "_" . $this->AI->model . "_" . $this->temperature . "_" . $this->max_output_tokens . ".txt";
+        $sysInsHash = md5($this->systemInstruction);
+        $tiedostonPolku = $this->AI->temp_dir . "/gemini_tekstihaku_" . $promptHash . "_" . $sysInsHash . "_" . $this->AI->model . "_" . $this->temperature . "_" . $this->max_output_tokens . ".txt";
         if($haetaankoAiempi && file_exists($tiedostonPolku)) {
             $file = fopen($tiedostonPolku, "r");
             $contents = fread($file, filesize($tiedostonPolku));
@@ -174,7 +201,8 @@ class AIGemini {
                 return [true, $vastaus, "total_tokens" => $totalTokes];
             } else {
                 $promptHash = md5($prompt);
-                $tiedostonPolku = $this->AI->temp_dir . "/gemini_tekstihaku_" . $promptHash . "_" . $this->AI->model . "_" . $this->temperature . "_" . $this->max_output_tokens . ".txt";
+                $sysInsHash = md5($this->systemInstruction);
+                $tiedostonPolku = $this->AI->temp_dir . "/gemini_tekstihaku_" . $promptHash . "_" . $sysInsHash . "_" . $this->AI->model . "_" . $this->temperature . "_" . $this->max_output_tokens . ".txt";
                 if($haetaankoAiempi && file_exists($tiedostonPolku)) {
                     $file = fopen($tiedostonPolku, "r");
                     $contents = fread($file, filesize($tiedostonPolku));
@@ -373,7 +401,8 @@ class AIGemini {
         $valittuStructure = $this->structured_configs[$structure];
         $structureHash = md5(json_encode($valittuStructure));
         $promptHash = md5($prompt);
-        $tiedostonPolku = $this->AI->temp_dir . "/gemini_structuredhaku_" . $promptHash . "_". $structureHash . "_" . $this->AI->model . ".txt";
+        $sysInsHash = md5($this->systemInstruction);
+        $tiedostonPolku = $this->AI->temp_dir . "/gemini_structuredhaku_" . $promptHash . "_". $structureHash . "_" . $sysInsHash . "_" . $this->AI->model . ".txt";
         if($haetaankoAiempi && file_exists($tiedostonPolku)) {
             $file = fopen($tiedostonPolku, "r");
             $contents = fread($file, filesize($tiedostonPolku));
@@ -423,6 +452,25 @@ class AIGemini {
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
         }
     }
+    function datatyping($tyyppi) {
+        if(gettype(($tyyppi)) == "array") { 
+            return new Schema(type: DataType::ARRAY, items: self::datatyping($tyyppi[0]));
+        }
+        switch ($tyyppi) {
+            case "string":
+                return new Schema(type: DataType::STRING);
+            case "int":
+                return new Schema(type: DataType::INTEGER);
+            case "boolean":
+                return new Schema(type: DataType::BOOLEAN);
+            case "object":
+                return new Schema(type: DataType::OBJECT);
+            case "number":
+                return new Schema(type: DataType::NUMBER);
+            default:
+                throw new Exception("Tuntematon datatyyppi: " . $tyyppi);
+        }
+    }
     /**
      * Rakentaa ja lisaa JSON-skeeman structured_configs-listaan
      * 
@@ -440,26 +488,7 @@ class AIGemini {
         $structure = ["properties" => [], "required" => []];
         for ($x = 0; $x < count($properties); $x++) {
             $propertyName = $properties[$x][0];
-            switch ($properties[$x][1]) {
-                case "string":
-                    $structure["properties"][$propertyName] = new Schema(type: DataType::STRING);
-                    break;
-                case "int":
-                    $structure["properties"][$propertyName] = new Schema(type: DataType::INTEGER);
-                    break;
-                case "boolean":
-                    $structure["properties"][$propertyName] = new Schema(type: DataType::BOOLEAN);
-                    break;
-                case "object":
-                    $structure["properties"][$propertyName] = new Schema(type: DataType::OBJECT);
-                    break;
-                case "array":
-                    $structure["properties"][$propertyName] = new Schema(type: DataType::ARRAY);
-                    break;
-                case "number":
-                    $structure["properties"][$propertyName] = new Schema(type: DataType::NUMBER);
-                    break;
-            }
+            $structure["properties"][$propertyName] = self::datatyping($properties[$x][1]);
             if($properties[$x][2]) {
                 $structure["required"][] = $propertyName;
             }
@@ -472,6 +501,87 @@ class AIGemini {
     function haeStructuret() {
         return $this->structured_configs;
     }
+    function haeStructure($nimi) {
+        if(isset($this->structured_configs[$nimi])) {
+            return [true, $this->structured_configs[$nimi]];
+        } else {
+            return [false, "Structurea '$nimi' ei löydy."];
+        }
+    }
+    function poistaStructure($nimi) {
+        if(isset($this->structured_configs[$nimi])) {
+            unset($this->structured_configs[$nimi]);
+            return [true, "Structure '$nimi' poistettu."];
+        } else {
+            return [false, "Structurea '$nimi' ei löydy."];
+        }
+    }
+
+    function linkkiHaku(string $linkki, $structure = null, $haetaankoAiempi = false, $systemInstruction = null) {
+        if(!is_null($systemInstruction)) {
+            $this->systemInstruction = $systemInstruction;
+        }
+        if($structure == null) {
+            $structure = "Artikkeli";
+        }
+        $artikkeli = file_get_contents($linkki);
+        $prompt = "Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Artikkeli: " . $artikkeli;
+        $valittuStructure = $this->structured_configs[$structure];
+        $structureHash = md5(json_encode($valittuStructure));
+        $linkkiHash = md5($linkki);
+        $sysInsHash = md5($this->systemInstruction);
+        $tiedostonPolku = $this->AI->temp_dir . "/gemini_linkkihaku_" . $linkkiHash . "_". $structureHash . "_" . $sysInsHash . "_" . $this->AI->model . ".txt";
+        if($haetaankoAiempi && file_exists($tiedostonPolku)) {
+            $file = fopen($tiedostonPolku, "r");
+            $contents = fread($file, filesize($tiedostonPolku));
+            fclose($file);
+            return [true, $contents];
+        }
+        try {
+            $result = $this->AI->client
+            ->generativeModel(model: $this->AI->model)
+            ->withGenerationConfig(
+                generationConfig: new GenerationConfig(
+                    responseMimeType: ResponseMimeType::APPLICATION_JSON,
+                    responseSchema: new Schema(
+                        type: DataType::ARRAY,
+                        items: new Schema(
+                            type: DataType::OBJECT,
+                            properties: $valittuStructure["properties"],
+                            required: $valittuStructure["required"],
+                        )
+                    )
+                )
+            )
+            ->withSystemInstruction(Content::parse($this->systemInstruction)) 
+            /*->withTool(new Tool(googleSearch: GoogleSearch::from()))*/ // Tool use with a response mime type: 'application/json' is unsupported
+            ->generateContent($prompt);
+            $vastaus = $result->text();
+            $parsed = json_decode($vastaus, true);
+            $totalTokens = $result->usageMetadata->totalTokenCount;
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return [false, "Invalid JSON response"];
+            }
+            if($this->savetoCache) {
+                $file = fopen($tiedostonPolku, 'w');
+                fwrite($file, $vastaus);
+                fclose($file);
+            }
+            return [true, $parsed, "total_tokens" => $totalTokens];
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        $statusCode = $e->getResponse()->getStatusCode();
+        if ($statusCode === 429) {
+            return [null, "Rate limit exceeded. Please try again later."];
+        }
+        return [false, "HTTP Error $statusCode: " . $e->getMessage()];
+        } catch (\Exception $e) {
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
+            return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
+        }
+    }
+
     function modelExists($modelName = null) {
         if ($modelName === null) {
         $modelName = $this->AI->model;
@@ -547,6 +657,7 @@ class AIGemini {
         }
     }
 }
+
 
 function applyInlineFormatting(string $text): string
 {

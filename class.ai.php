@@ -175,6 +175,20 @@ class Ai {
         }
         return $this->childClass->strukturoituHaku($prompt, $jsonSchema, ...$extraParametrit);
     }
+    function lisaaStructure($schemaName, $jsonSchema) {
+        if(method_exists($this->childClass, 'lisaaStructure')) {
+            return $this->childClass->lisaaStructure($schemaName, $jsonSchema);
+        } else {
+            throw new Exception("Lapsiluokalla ei ole lisaaStructure-metodia.");
+        }
+    }
+    function haeStructuret() {
+        if(method_exists($this->childClass, 'haeStructuret')) {
+            return $this->childClass->haeStructuret();
+        } else {
+            throw new Exception("Lapsiluokalla ei ole haeStructuret-metodia.");
+        }
+    }
     /**
      * Valitsee esivalmistellun kyselyn avaimella. Palauttaa true, jos kysely löytyi ja valittiin, muuten false.
      */

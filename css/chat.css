@@ -143,3 +143,9 @@ button:disabled {
     background-color: #ffcccc; 
     border-color: #ff0000; 
 }
+#pätkä {
+    height: 800px;
+    width: 100%;
+    display: flex;
+    position: relative;
+}

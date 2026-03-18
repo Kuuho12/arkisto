@@ -189,6 +189,10 @@ class Ai {
             throw new Exception("Lapsiluokalla ei ole haeStructuret-metodia.");
         }
     }
+
+    function linkkiHaku(string $linkki, $structureName = null, ...$extraParametrit) {
+        return $this->childClass->linkkiHaku($linkki, $structureName, ...$extraParametrit);
+    }
     /**
      * Valitsee esivalmistellun kyselyn avaimella. Palauttaa true, jos kysely löytyi ja valittiin, muuten false.
      */

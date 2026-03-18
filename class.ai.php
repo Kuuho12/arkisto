@@ -15,7 +15,7 @@ class Ai {
     public $valittuEsivalmisteltuKysely;
     public $files = array();
     public $temp_dir = "temp_ai";
-    private $savetoCache;
+    public $savetoCache;
     public function __construct($apiKey, $api = "gemini", $model = null, $savetoCache = false)
     {
         if(gettype($apiKey) === 'string') {
@@ -89,7 +89,7 @@ class Ai {
         for($x = 1; $x <= $arvotCount; $x++) {
             $prompt = str_replace("%$x", $arvot[$x-1], $prompt);
         }
-        if ($this->api === "gemini") {
+        if ($this->api === "gemini" && !is_null($systemInstruction)) {
             return [$prompt, $systemInstruction];
         } else {
             $prompt = $systemInstruction ? "$systemInstruction $prompt" : $prompt;

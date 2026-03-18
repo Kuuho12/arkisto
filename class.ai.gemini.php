@@ -30,9 +30,14 @@ class AIGemini {
         "video/mp4" => MimeType::VIDEO_MP4
     ); 
     public $structured_configs = [];
-    public function __construct($AIData, $savetoCache = false) {
+    public function __construct($AIData, $savetoCache = null, $systemInstruction = "") {
         $this->AI = $AIData;
-        $this->savetoCache = $savetoCache;
+        if(!is_null($savetoCache)) {
+            $this->savetoCache = $savetoCache;
+        } else {
+            $this->savetoCache = $AIData->savetoCache;
+        }
+        $this->systemInstruction = $systemInstruction;
         $this->structured_configs = [
             "Artikkeli" => [
                 "properties" => [
@@ -495,6 +500,14 @@ class AIGemini {
         }
         $this->structured_configs[$nimi] = $structure;
     }
+    function poistaStructure($nimi) {
+        if(isset($this->structured_configs[$nimi])) {
+            unset($this->structured_configs[$nimi]);
+            return [true, "Structure '$nimi' poistettu."];
+        } else {
+            return [false, "Structurea '$nimi' ei löydy."];
+        }
+    }
     /**
      * Palauttaa tallennetut JSON-skeemat
      */
@@ -508,14 +521,6 @@ class AIGemini {
             return [false, "Structurea '$nimi' ei löydy."];
         }
     }
-    function poistaStructure($nimi) {
-        if(isset($this->structured_configs[$nimi])) {
-            unset($this->structured_configs[$nimi]);
-            return [true, "Structure '$nimi' poistettu."];
-        } else {
-            return [false, "Structurea '$nimi' ei löydy."];
-        }
-    }
 
     function linkkiHaku(string $linkki, $structure = null, $haetaankoAiempi = false, $systemInstruction = null) {
         if(!is_null($systemInstruction)) {
@@ -524,8 +529,6 @@ class AIGemini {
         if($structure == null) {
             $structure = "Artikkeli";
         }
-        $artikkeli = file_get_contents($linkki);
-        $prompt = "Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Artikkeli: " . $artikkeli;
         $valittuStructure = $this->structured_configs[$structure];
         $structureHash = md5(json_encode($valittuStructure));
         $linkkiHash = md5($linkki);
@@ -537,6 +540,42 @@ class AIGemini {
             fclose($file);
             return [true, $contents];
         }
+        
+        $opts = [
+            'http' => [
+                'method'  => 'GET',
+                'header'  => implode("\r\n", [
+                    'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language: fi-FI,fi;q=0.9,en-US;q=0.8,en;q=0.7'
+                ]),
+                'timeout' => 20
+            ],
+            'ssl' => [
+                'verify_peer' => true,
+                'verify_peer_name' => true
+            ]
+        ];
+        $context = stream_context_create($opts);
+        $artikkeli = @file_get_contents($linkki, false, $context);
+        if ($artikkeli === false) {
+            $error = error_get_last();
+            return [false, "Linkin lukeminen epäonnistui: " . ($error['message'] ?? 'tuntematon virhe')];
+        }
+        $dom = new DOMDocument();
+        // Vältä varoituksia rikkinäisestä HTML:sta
+        libxml_use_internal_errors(true);
+        $dom->loadHTML($artikkeli, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+
+        $body = $dom->getElementsByTagName('body')->item(0);
+        $inside = '';
+        if ($body) {
+            foreach ($body->childNodes as $child) {
+                $inside .= $dom->saveHTML($child);
+            }
+        }
+        $prompt = "Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Esittely löytyy artikkkelin alusta. Artikkeli: " . $inside;
         try {
             $result = $this->AI->client
             ->generativeModel(model: $this->AI->model)
@@ -603,7 +642,7 @@ class AIGemini {
             throw $e;
         } catch (\Exception $e) {
             if ($e->getErrorCode() === 429) {
-                return [null, "Rate limit exceeded. Please try again later."];
+                return [null, "Rate limit exceeded. Please try again later.", $malli];
             }
             return [false, $e->getMessage(), $malli];  // Any other error likely means model doesn't exist
         }

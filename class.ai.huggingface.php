@@ -7,27 +7,45 @@ class AIHuggingface {
     private $temperature = 0.8;
     public $jsonSchemas = [
         "reseptit" => [
-        'type' => 'object',
-        'properties' => [
-            'recipes' => [
-                'type' => 'array',
-                'items' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'recipe_name' => ['type' => 'string'],
-                        'ingredients' => ['type' => 'array', 'items' => ['type' => 'string']],
-                        'cooking_time_in_minutes' => ['type' => 'integer']
-                    ],
-                    'required' => ['recipe_name', 'ingredients', 'cooking_time_in_minutes']
+            'type' => 'object',
+            'properties' => [
+                'recipes' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'recipe_name' => ['type' => 'string'],
+                            'ingredients' => ['type' => 'array', 'items' => ['type' => 'string']],
+                            'cooking_time_in_minutes' => ['type' => 'integer']
+                        ],
+                        'required' => ['recipe_name', 'ingredients', 'cooking_time_in_minutes']
+                    ]
                 ]
-            ]
+            ],
+            'required' => ['recipes']
         ],
-        'required' => ['recipes']
-    ]
+        "Artikkeli" => [
+            'type' => 'object',
+            'properties' => [
+                'Otsikko' => ['type' => 'string'],
+                'Tekijät' => ['type' => 'array', 'items' => ['type' => 'string']],
+                'Tekijöiden organisaatiot' => ['type' => 'array', 'items' => ['type' => 'string']],
+                'Lehden nimi' => ['type' => 'string'],
+                'Julkaisuvuosi' => ['type' => 'integer'],
+                'Esittely' => ['type' => 'string'],
+                'Kieli' => ['type' => 'string'],
+                'Maksullinen' => ['type' => 'boolean']
+            ],
+            'required' => ['Otsikko', 'Tekijät', 'Tekijöiden organisaatiot', 'Lehden nimi', 'Julkaisuvuosi', 'Esittely', 'Kieli', 'Maksullinen']
+        ]
     ];
-    public function __construct($AIData, $savetoCache = false) { /*$apiKey, $model = "deepseek-ai/DeepSeek-V3.2:novita"*/
+    public function __construct($AIData, $savetoCache = null) { /*$apiKey, $model = "deepseek-ai/DeepSeek-V3.2:novita"*/
         $this->AI = $AIData;
-        $this->savetoCache = $savetoCache;
+        if(!is_null($savetoCache)) {
+            $this->savetoCache = $savetoCache;
+        } else {
+            $this->savetoCache = $AIData->savetoCache;
+        }
     }
     /**
      * Suorittaa tekstihakun tekoälyrajapintaan tai hakee valmiin vastauksen välimuistista.
@@ -356,7 +374,7 @@ class AIHuggingface {
                     ],
                 ],
                 'max_tokens' => $this->max_tokens,
-                'temperature' => $this->temperature,
+                'temperature' => $temperature,
                 'response_format' => [
                     'type' => 'json_object'
                 ]
@@ -377,7 +395,7 @@ class AIHuggingface {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
-    }
+        }
     }
     /**
      * Lisaa JSON-skeeman $jsonSchemas-listaan
@@ -388,12 +406,118 @@ class AIHuggingface {
     function lisaaStructure($jsonSchemaAvain, $jsonSchema) {
         $this->jsonSchemas[$jsonSchemaAvain] = $jsonSchema;
     }
+    function poistaStructure($jsonSchemaAvain) {
+        if(isset($this->jsonSchemas[$jsonSchemaAvain])) {
+            unset($this->jsonSchemas[$jsonSchemaAvain]);
+            return [true, "Structure '$jsonSchemaAvain' poistettu."];
+        } else {
+            return [false, "Structurea '$jsonSchemaAvain' ei löydy."];
+        }
+    }
     /**
      * Palauttaa tallennetut JSON-skeemat
      */
     function haeStructuret() {
         return $this->jsonSchemas;
     }
+    function haeStructure($jsonSchemaAvain) {
+        if(isset($this->jsonSchemas[$jsonSchemaAvain])) {
+            return [true, $this->jsonSchemas[$jsonSchemaAvain]];
+        } else {
+            return [false, "Structurea '$jsonSchemaAvain' ei löydy."];
+        }
+    }
+
+    function linkkiHaku(string $linkki, $structure = null, $temperature = 0.0, $max_tokens = null, $haetaankoAiempi = false) { // Useimmat lehtisivut ovat liian pitkiä, jotta tämä toimisi
+        if(!is_null($max_tokens)) {
+            $this->max_tokens = $max_tokens;
+        }
+        if($structure == null) {
+            $structure = "Artikkeli";
+        }
+        $valittuStructure = json_encode($this->jsonSchemas[$structure]);
+        $structureHash = md5($valittuStructure);
+        $linkkiHash = md5($linkki);
+        $parts = explode(':', $this->AI->model);
+        $model = str_replace("/", "-", $parts[0]);
+        $tiedostonPolku = $this->AI->temp_dir . "/hf_linkkihaku_" . $linkkiHash . "_". $structureHash . "_" . $model . "_" . $temperature . '_' . $this->max_tokens . ".txt";
+        if($haetaankoAiempi && file_exists($tiedostonPolku)) {
+            $file = fopen($tiedostonPolku, "r");
+            $contents = fread($file, filesize($tiedostonPolku));
+            fclose($file);
+            return [true, $contents];
+        }
+
+        $opts = [
+            'http' => [
+                'method'  => 'GET',
+                'header'  => implode("\r\n", [
+                    'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language: fi-FI,fi;q=0.9,en-US;q=0.8,en;q=0.7'
+                ]),
+                'timeout' => 20
+            ],
+            'ssl' => [
+                'verify_peer' => true,
+                'verify_peer_name' => true
+            ]
+        ];
+        $context = stream_context_create($opts);
+        $artikkeli = @file_get_contents($linkki, false, $context);
+        if ($artikkeli === false) {
+            $error = error_get_last();
+            return [false, "Linkin lukeminen epäonnistui: " . ($error['message'] ?? 'tuntematon virhe')];
+        }
+        $dom = new DOMDocument();
+        // Vältä varoituksia rikkinäisestä HTML:sta
+        libxml_use_internal_errors(true);
+        $dom->loadHTML($artikkeli, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+
+        $body = $dom->getElementsByTagName('body')->item(0);
+        $inside = '';
+        if ($body) {
+            foreach ($body->childNodes as $child) {
+                $inside .= $dom->saveHTML($child);
+            }
+        }
+
+        $prompt = "Palauta vastaus JSON-muodossa seuraavan rakenteen mukaisesti: " . $valittuStructure . " Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Esittely löytyy artikkkelin alusta. Artikkeli: " . $inside;
+        try {
+            $response = $this->AI->client->chat()->create([
+                'model' => $this->AI->model,
+                'messages' => [
+                    [
+                        'role' => 'user', 
+                        'content' => $prompt
+                    ],
+                ],
+                'max_tokens' => $this->max_tokens,
+                'temperature' => $temperature,
+                'response_format' => [
+                    'type' => 'json_object'
+                ]
+            ]);
+            $vastaus = $response->choices[0]->message->content;
+            $parsed = json_decode($vastaus, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return [false, "Invalid JSON response"];
+            }
+            if($this->savetoCache) {
+                $file = fopen($tiedostonPolku, 'w');
+                fwrite($file, $vastaus);
+                fclose($file);
+            }
+            return [true, $parsed, "total_tokens" => $response->usage->totalTokens];
+        } catch (\Exception $e) {
+            if ($e->getErrorCode() === 429) {
+                return [null, "Rate limit exceeded. Please try again later."];
+            }
+            return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
+        }
+    }
+
     function modelExists($modelName = null) {
         if ($modelName === null) {
         $modelName = $this->AI->model;

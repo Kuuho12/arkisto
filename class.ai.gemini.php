@@ -623,6 +623,26 @@ class AIGemini {
 
     function modelExists($modelName = null) {
         if ($modelName === null) {
+            $modelName = $this->AI->model;
+        }
+        $malli = false;
+        try {
+            $malli = !is_null($this->AI->client->models()->retrieve('models/' . $modelName));
+            return [$malli];
+        } catch (\Exception $e) {
+            return [$malli, $e->getMessage()];
+        }
+    }
+    /**
+     * Tarkistaa, onko mallia olemassa ja toimiiko se.
+     * 
+     * Mallin olemassaolon tarkistus hoituu retrieve-metodilla, jolla hakee mallin tiedot ja joka tuntematonta mallia hakeassa johtaa Exceptioniin.
+     * Sen jälkeen testataan mallin toimivuus yksinkertaisella 'Test'-promptilla.
+     * 
+     * @param $modelName Mallin nimi
+     */
+    function modelWorks($modelName = null) {
+        if ($modelName === null) {
         $modelName = $this->AI->model;
         }
         $malli = false;
@@ -646,6 +666,10 @@ class AIGemini {
             }
             return [false, $e->getMessage(), $malli];  // Any other error likely means model doesn't exist
         }
+    }
+
+    function listModels($pageSize = null) {
+        return $this->AI->client->models()->list(pageSize: $pageSize);
     }
     /**
      * Laskee promptin tokenit, mukaan lukien tallennetut tiedostot.

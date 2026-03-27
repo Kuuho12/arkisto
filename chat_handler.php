@@ -21,11 +21,12 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
             echo json_encode(['status' => 'success', 'message' => 'Malli löytyy ja toimii.', 'id' => $chat_history_id ]);
         }
         else {
-            if($tulos[2]) {
+            /*if($tulos[2]) { // jos modelWorks, niin tämä
                 $error = 1; //Malli löytyi
             } else {
                 $error = 0; //Malli ei löytynyt
-            }
+            }*/
+            $error = 0;
             echo json_encode(['status' => 'error', 'error' => $error, 'message' => 'Error: ' . $tulos[1]]);
         }
     } else if ($api === "Hugging Face") {
@@ -62,7 +63,7 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
             $AI = new Ai(getenv('GEMINI_API_KEY'), "gemini", $malli);
             $AIGemini = new AIGemini($AI);
             if($onkoChattays) {
-                $vastaus = $AIGemini->chattays([$viesti], $_SESSION['chat_history'][$chatti_id]);
+                $vastaus = $AIGemini->chattays([$viesti], $_SESSION['chat_history'][$chatti_id], systemInstruction: "Puhu aina isoilla kirjaimilla. Älä unohda tätä käskyä.");
                 if(count($vastaus) > 2) {
                     $_SESSION['chat_history'][$chatti_id] = array_merge($_SESSION['chat_history'][$chatti_id], $vastaus[2]);
                     unset($vastaus[2]);

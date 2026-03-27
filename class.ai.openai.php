@@ -649,6 +649,20 @@ class AIOpenAI {
 
     function modelExists($modelName = null) {
         if ($modelName === null) {
+            $modelName = $this->AI->model;
+        }
+        $malli = false;
+        try {
+            $tulos = $this->AI->client->models()->retrieve($modelName);
+            $malli = !is_null($tulos);
+            return [$malli];
+        } catch (\Exception $e) {
+            return [$malli, $e->getMessage()];
+        }
+    }
+
+    function modelWorks($modelName = null) {
+        if ($modelName === null) {
         $modelName = $this->AI->model;
         }
         $malli = false;

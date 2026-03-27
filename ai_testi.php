@@ -29,9 +29,9 @@ $tulos = $AIclass->strukturoituHaku(
 var_dump($tulos[1]);
 echo "<br>Tokens: " . $tulos["total_tokens"];*/
 
-$tulos3 = $AIclass->linkkiHaku("https://www.is.fi/kotimaa/art-2000011882780.html"); // https://www.is.fi/uutiset/art-2000008502780.html https://www.iltalehti.fi/ulkomaat/a/64f0981b-dbb7-497d-8845-45b8b1391e44 https://www.iltalehti.fi/keho/a/bebfa2b8-77ff-4f13-9395-b866a22ffab9 https://yle.fi/a/74-20213734
+/*$tulos3 = $AIclass->linkkiHaku("https://www.is.fi/kotimaa/art-2000011882780.html"); // https://www.is.fi/uutiset/art-2000008502780.html https://www.iltalehti.fi/ulkomaat/a/64f0981b-dbb7-497d-8845-45b8b1391e44 https://www.iltalehti.fi/keho/a/bebfa2b8-77ff-4f13-9395-b866a22ffab9 https://yle.fi/a/74-20213734
 var_dump($tulos3[1]);
-echo "Tokens: " . $tulos3["total_tokens"] . "<br>";
+echo "Tokens: " . $tulos3["total_tokens"] . "<br>";*/
 
 /*$tulos1 = $AIGemini->linkkiHaku("https://www.is.fi/kotimaa/art-2000011882780.html"); // https://www.is.fi/uutiset/art-2000008502780.html https://www.iltalehti.fi/ulkomaat/a/64f0981b-dbb7-497d-8845-45b8b1391e44 https://www.iltalehti.fi/keho/a/bebfa2b8-77ff-4f13-9395-b866a22ffab9 https://yle.fi/a/74-20213734
 var_dump($tulos1[1]);

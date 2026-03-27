@@ -210,6 +210,19 @@ class Ai {
         $this->esivalmistellutKyselyt[$kyselyNimi] = $kyselyTeksti;
         return true;
     }
-
+    public function modelExists($modelName = null) {
+        if(method_exists($this->childClass, 'modelExists')) {
+            return $this->childClass->modelExists($modelName);
+        } else {
+            throw new Exception("Lapsiluokalla ei ole modelExists-metodia.");
+        }
+    }
+    public function modelWorks($modelName = null) {
+        if(method_exists($this->childClass, 'modelWorks')) {
+            return $this->childClass->modelWorks($modelName);
+        } else {
+            throw new Exception("Lapsiluokalla ei ole modelWorks-metodia.");
+        }
+    }
 }
 ?>

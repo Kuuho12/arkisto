@@ -29,6 +29,7 @@ final class RetrieveResponse implements ResponseContract, ResponseHasMetaInforma
         public readonly string $object,
         public readonly ?int $created,
         public readonly ?string $ownedBy,
+        public readonly ?array $providers, // Muutos huggingface-apin käyttöä varten.
         private readonly MetaInformation $meta,
     ) {}
 
@@ -37,11 +38,15 @@ final class RetrieveResponse implements ResponseContract, ResponseHasMetaInforma
      */
     public static function from(array $attributes, MetaInformation $meta): self
     {
+        if(array_key_exists("data", $attributes) && !(array_key_exists("id", $attributes) && array_key_exists("object", $attributes))) { // Muutos huggingface-apin käyttöä varten.
+            $attributes = $attributes["data"];
+        }
         return new self(
             id: $attributes['id'],
             object: $attributes['object'],
             created: $attributes['created'] ?? $attributes['created_at'] ?? null,
             ownedBy: $attributes['owned_by'] ?? null,
+            providers: $attributes["providers"] ?? null, // Muutos huggingface-apin käyttöä varten.
             meta: $meta,
         );
     }

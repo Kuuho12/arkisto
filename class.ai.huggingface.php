@@ -520,6 +520,20 @@ class AIHuggingface {
 
     function modelExists($modelName = null) {
         if ($modelName === null) {
+            $modelName = explode(':', $this->AI->model)[0]; // otetaan providerin nimi pois lopusta
+        }
+        $malli = false;
+        try {
+            $tulos = $this->AI->client->models()->retrieve($modelName);
+            $malli = !is_null($tulos);
+            return [$malli, $tulos->providers];
+        } catch (\Exception $e) {
+            return [$malli, $e->getMessage()];
+        }
+    }
+
+    function modelWorks($modelName = null) {
+        if ($modelName === null) {
         $modelName = $this->AI->model;
         }
         try {

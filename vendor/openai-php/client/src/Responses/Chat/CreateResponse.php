@@ -45,6 +45,12 @@ final class CreateResponse implements ResponseContract, ResponseHasMetaInformati
      */
     public static function from(array $attributes, MetaInformation $meta): self
     {
+        if(! isset($attributes['choices']) || ! is_array($attributes['choices'])) {
+            if(isset($attributes['message']) && is_string($attributes['message'])) {
+                throw new \Exception('API Error: ' . $attributes['message']);
+            } 
+            throw new \Exception('Missing or invalid "choices" attribute in response data.');
+        }
         $choices = array_map(fn (array $result): CreateResponseChoice => CreateResponseChoice::from(
             $result
         ), $attributes['choices']);

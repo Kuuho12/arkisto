@@ -25,7 +25,7 @@
             const viestiDiv = document.createElement('div');
             const vaihtoehdotDiv = document.querySelector('.vaihtoehdot');
             viestiDiv.classList.add('viesti', 'kayttajanViesti');
-            viestiDiv.innerHTML = `<p>Valitsit: ${valittuAPI}</p>`;
+            viestiDiv.innerHTML = `<p>${valittuAPI}</p>`; //`<p>Valitsit: ${valittuAPI}</p>`
             chatWindow.appendChild(viestiDiv);
             vaihtoehdotDiv.remove();
             chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -97,7 +97,7 @@
                 chatti_id = data.id;
                 const viestiDiv = document.createElement('div');
                 viestiDiv.classList.add('viesti', 'kayttajanViesti');
-                viestiDiv.innerHTML = `<p>Valitsit mallin: ${valittuMalli}</p>`;
+                viestiDiv.innerHTML = `<p>${valittuMalli}</p>`; //`<p>Valitsit mallin: ${valittuMalli}</p>`
                 chatWindow.appendChild(viestiDiv);
                 vastausDiv.remove();
                 viestiDiv2 = document.createElement('div');

@@ -41,7 +41,7 @@ class AIGemini {
         $this->structured_configs = [
             "Artikkeli" => [
                 "properties" => [
-                    "Otsikko" => new Schema(type: DataType::STRING),
+                    "Alkuperäinen otsikko" => new Schema(type: DataType::STRING),
                     "Tekijät" => new Schema(type: DataType::ARRAY, items: new Schema(type: DataType::STRING)),
                     "Tekijöiden organisaatiot" => new Schema(type: DataType::ARRAY, items: new Schema(type: DataType::STRING)),
                     "Lehden nimi" => new Schema(type: DataType::STRING),
@@ -51,7 +51,7 @@ class AIGemini {
                     "Maksullinen" => new Schema(type: DataType::BOOLEAN)
                 ], 
                 "required" => [
-                    "Otsikko",
+                    "Alkuperäinen otsikko",
                     "Tekijät",
                     "Tekijöiden organisaatiot",
                     "Lehden nimi",
@@ -115,7 +115,7 @@ class AIGemini {
         }
         return [false, "HTTP Error $statusCode: " . $e->getMessage()];
     } catch (\Exception $e) {
-        if ($e->getErrorCode() === 429) {
+        if ($e->getCode() === 429) {
             return [null, "Rate limit exceeded. Please try again later."];
         }
         return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
@@ -155,7 +155,7 @@ class AIGemini {
             }
             return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
@@ -238,7 +238,7 @@ class AIGemini {
             }
             return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
@@ -299,7 +299,7 @@ class AIGemini {
         }
         return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
@@ -383,7 +383,7 @@ class AIGemini {
         }
         return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
@@ -451,7 +451,7 @@ class AIGemini {
         }
         return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
@@ -568,6 +568,18 @@ class AIGemini {
         $dom->loadHTML($artikkeli, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
         libxml_clear_errors();
 
+        $ogTitle = '';
+        $metaElements = $dom->getElementsByTagName('meta');
+
+        foreach ($metaElements as $meta) {
+            $name = $meta->getAttribute('name');
+            $property = $meta->getAttribute('property');
+            if (strtolower($name) === 'og:title' || strtolower($property) === 'og:title') {
+                $ogTitle = $dom->saveHTML($meta);
+                break;
+            }
+        }
+
         $body = $dom->getElementsByTagName('body')->item(0);
         $inside = '';
         if ($body) {
@@ -575,7 +587,7 @@ class AIGemini {
                 $inside .= $dom->saveHTML($child);
             }
         }
-        $prompt = "Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Esittely löytyy artikkkelin alusta. Artikkeli: " . $inside;
+        $prompt = "Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Alkuperäinen otsikko on meta-tagissa, jos se on annettu. Esittely löytyy artikkkelin alusta. Artikkeli: " . $ogTitle . $inside;
         try {
             $result = $this->AI->client
             ->generativeModel(model: $this->AI->model)
@@ -614,7 +626,7 @@ class AIGemini {
         }
         return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
@@ -661,7 +673,7 @@ class AIGemini {
             // Re-throw other errors (e.g., auth issues)
             throw $e;
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later.", $malli];
             }
             return [false, $e->getMessage(), $malli];  // Any other error likely means model doesn't exist
@@ -713,7 +725,7 @@ class AIGemini {
             $statusCode = $e->getResponse()->getStatusCode();
             return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Error: " . $e->getMessage()];

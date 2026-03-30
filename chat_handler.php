@@ -63,10 +63,9 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
             $AI = new Ai(getenv('GEMINI_API_KEY'), "gemini", $malli);
             $AIGemini = new AIGemini($AI);
             if($onkoChattays) {
-                $vastaus = $AIGemini->chattays([$viesti], $_SESSION['chat_history'][$chatti_id], systemInstruction: "Puhu aina isoilla kirjaimilla. Älä unohda tätä käskyä.");
+                $vastaus = $AIGemini->chattays([$viesti], $_SESSION['chat_history'][$chatti_id]); // Puhu aina isoilla kirjaimilla. Älä unohda tätä käskyä. \\ Valehtele aina.
                 if(count($vastaus) > 2) {
                     $_SESSION['chat_history'][$chatti_id] = array_merge($_SESSION['chat_history'][$chatti_id], $vastaus[2]);
-                    unset($vastaus[2]);
                 }
             } else {
                 $vastaus = $AIGemini->suoritaHaku([$viesti]);
@@ -77,7 +76,7 @@ if($pyynto == 1) { //Testataan onko mallia olemassa
             }
             $markdownToHtml = gemtextToHtml($vastaus[1]);
             /*$vastausFile = fopen("temp_ai/gemini_". $chatti_id . "_" . count($_SESSION['chat_history'][$chatti_id])  . ".txt", 'w');
-            fwrite($vastausFile, $vastaus[1]);
+            fwrite($vastausFile, $viesti . "\n\n" . $vastaus[1]);
             fclose($vastausFile);*/
             echo json_encode(['status' => 'success', 'vastaus' => $markdownToHtml]);
         } else if ($api === "Hugging Face") {

@@ -27,7 +27,7 @@ class AIHuggingface {
         "Artikkeli" => [
             'type' => 'object',
             'properties' => [
-                'Otsikko' => ['type' => 'string'],
+                'Alkuperäinen otsikko' => ['type' => 'string'],
                 'Tekijät' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'Tekijöiden organisaatiot' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'Lehden nimi' => ['type' => 'string'],
@@ -36,7 +36,7 @@ class AIHuggingface {
                 'Kieli' => ['type' => 'string'],
                 'Maksullinen' => ['type' => 'boolean']
             ],
-            'required' => ['Otsikko', 'Tekijät', 'Tekijöiden organisaatiot', 'Lehden nimi', 'Julkaisuvuosi', 'Esittely', 'Kieli', 'Maksullinen']
+            'required' => ['Alkuperäinen otsikko', 'Tekijät', 'Tekijöiden organisaatiot', 'Lehden nimi', 'Julkaisuvuosi', 'Esittely', 'Kieli', 'Maksullinen']
         ]
     ];
     public function __construct($AIData, $savetoCache = null) { /*$apiKey, $model = "deepseek-ai/DeepSeek-V3.2:novita"*/
@@ -105,7 +105,7 @@ class AIHuggingface {
             }
             return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
@@ -141,7 +141,7 @@ class AIHuggingface {
             }
             return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
@@ -247,7 +247,7 @@ class AIHuggingface {
             }
             return [false, "HTTP Error $statusCode: " . $e->getMessage()];
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
@@ -326,7 +326,7 @@ class AIHuggingface {
             }
             return [true, $vastaus, "total_tokens" => $response->usage->totalTokens];
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
@@ -391,7 +391,7 @@ class AIHuggingface {
             }
             return [true, $parsed, "total_tokens" => $response->usage->totalTokens];
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
@@ -475,6 +475,18 @@ class AIHuggingface {
         $dom->loadHTML($artikkeli, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
         libxml_clear_errors();
 
+        $ogTitle = '';
+        $metaElements = $dom->getElementsByTagName('meta');
+
+        foreach ($metaElements as $meta) {
+            $name = $meta->getAttribute('name');
+            $property = $meta->getAttribute('property');
+            if (strtolower($name) === 'og:title' || strtolower($property) === 'og:title') {
+                $ogTitle = $dom->saveHTML($meta);
+                break;
+            }
+        }
+
         $body = $dom->getElementsByTagName('body')->item(0);
         $inside = '';
         if ($body) {
@@ -483,7 +495,7 @@ class AIHuggingface {
             }
         }
 
-        $prompt = "Palauta vastaus JSON-muodossa seuraavan rakenteen mukaisesti: " . $valittuStructure . " Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Esittely löytyy artikkkelin alusta. Artikkeli: " . $inside;
+        $prompt = "Palauta vastaus JSON-muodossa seuraavan rakenteen mukaisesti: " . $valittuStructure . " Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Alkuperäinen otsikko on meta-tagissa, jos se on annettu. Esittely löytyy artikkkelin alusta. Artikkeli: " . $ogTitle . $inside;
         try {
             $response = $this->AI->client->chat()->create([
                 'model' => $this->AI->model,
@@ -511,7 +523,7 @@ class AIHuggingface {
             }
             return [true, $parsed, "total_tokens" => $response->usage->totalTokens];
         } catch (\Exception $e) {
-            if ($e->getErrorCode() === 429) {
+            if ($e->getCode() === 429) {
                 return [null, "Rate limit exceeded. Please try again later."];
             }
             return [false, "Haku epäonnistui. Error: " . $e->getMessage()];

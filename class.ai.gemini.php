@@ -521,13 +521,21 @@ class AIGemini {
             return [false, "Structurea '$nimi' ei löydy."];
         }
     }
-
-    function linkkiHaku(string $linkki, $structure = null, $haetaankoAiempi = false, $systemInstruction = null) {
+    /**
+     * Hakee linkistä sivun koodin, karsii siitä paljon pois ja tekee siitä strukturoidun haun Gemini API:iin käyttäen aiemmin tallennettua JSON-skeemaa.
+     * 
+     * Koodin on tarkoitus hakea artikkelien tietoja, oletus structure ja ohjeistus sekä artikkelien koodin karsinta on rakennettu tätä varten. Koodi ei kykyne lukemaan AJAX:lla
+     * generoitua sivun sisältöä. Sivun koodista karsitaan niin paljon pois, että lehden nimeä ei saata löytyä, mutta testailussa tekoäly aina jotenkin silti löysi sen.
+     */
+    function linkkiHaku(string $linkki, $structure = null, string|null $ohjeistus = null, $haetaankoAiempi = false, $systemInstruction = null) {
         if(!is_null($systemInstruction)) {
             $this->systemInstruction = $systemInstruction;
         }
         if($structure == null) {
             $structure = "Artikkeli";
+        }
+        if($ohjeistus == null) {
+            $ohjeistus = "Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Alkuperäinen otsikko on meta-tagissa, jos se on annettu. Esittely löytyy artikkkelin alusta. Anna kieli ISO 639-1:2002 -standardin mukaan. Artikkeli: ";
         }
         $valittuStructure = $this->structured_configs[$structure];
         $structureHash = md5(json_encode($valittuStructure));
@@ -541,26 +549,72 @@ class AIGemini {
             return [true, $contents];
         }
         
-        $opts = [
-            'http' => [
-                'method'  => 'GET',
-                'header'  => implode("\r\n", [
-                    'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language: fi-FI,fi;q=0.9,en-US;q=0.8,en;q=0.7'
-                ]),
-                'timeout' => 20
-            ],
-            'ssl' => [
-                'verify_peer' => true,
-                'verify_peer_name' => true
-            ]
-        ];
-        $context = stream_context_create($opts);
-        $artikkeli = @file_get_contents($linkki, false, $context);
+        // $opts = [
+        //     'http' => [
+        //         'method'  => 'GET',
+        //         'header'  => implode("\r\n", [
+        //             'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        //             'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        //             'Accept-Language: fi-FI,fi;q=0.9,en-US;q=0.8,en;q=0.7',
+        //             'Accept-Encoding: gzip, deflate, br',
+        //             'Referer: https://www.google.com/',
+        //             'Cache-Control: no-cache',
+        //             'Connection: keep-alive'
+        //         ]),
+        //         'timeout' => 20,
+        //         'follow_location' => 1,
+        //     ],
+        //     'ssl' => [
+        //         'verify_peer' => true,
+        //         'verify_peer_name' => true
+        //     ]
+        // ];
+        //$context = stream_context_create($opts);
+        //$artikkeli = @file_get_contents($linkki, false, $context);
+        // if ($artikkeli === false) {
+        //     $error = error_get_last();
+        //     return [false, "Linkin lukeminen epäonnistui: " . ($error['message'] ?? 'tuntematon virhe')];
+        // }
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $linkki);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_ENCODING, '');
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language: en-US,en;q=0.9',
+            'Accept-Encoding: gzip, deflate',  // Include 'br' for Brotli (Cloudflare often uses it)
+            'Referer: https://www.google.com/',  // Or a relevant academic site like https://scholar.google.com/
+            'Cache-Control: no-cache',
+            'DNT: 1',
+            'Upgrade-Insecure-Requests: 1',
+            'Sec-Fetch-Dest: document',
+            'Sec-Fetch-Mode: navigate',
+            'Sec-Fetch-Site: none',
+            'Sec-Fetch-User: ?1',
+            'Sec-Ch-Ua: "Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            'Sec-Ch-Ua-Mobile: ?0',
+            'Sec-Ch-Ua-Platform: "Windows"'
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);  // Increase timeout
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        $cookieFile = sys_get_temp_dir() . '/cookies.txt'; 
+        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);  // Save cookies
+        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile); // Load cookies
+        $artikkeli = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        if ($httpCode !== 200) {
+            $tiedosto = fopen("temp_ai/linkkihaku_virhevastaus.txt", 'w');
+            fwrite($tiedosto, $artikkeli);
+            fclose($tiedosto);
+            return [false, "HTTP $httpCode: Unable to fetch article. Error: " . $error, $httpCode];
+        }
         if ($artikkeli === false) {
-            $error = error_get_last();
-            return [false, "Linkin lukeminen epäonnistui: " . ($error['message'] ?? 'tuntematon virhe')];
+            return [false, "Linkin lukeminen epäonnistui: " . ($error ?? 'tuntematon virhe'), $httpCode];
         }
         $dom = new DOMDocument();
         // Vältä varoituksia rikkinäisestä HTML:sta
@@ -581,13 +635,25 @@ class AIGemini {
         }
 
         $body = $dom->getElementsByTagName('body')->item(0);
+        $xpath = new DOMXPath($dom);
+        $elements = $xpath->query('//*[text()="References"]/parent::* | //script | //table | //footer | //aside | //nav | //style | //img | //picture | //video | //audio | //iframe | //object | //embed');
+        $elementsToRemove = [];
+        foreach ($elements as $element) {
+            $elementsToRemove[] = $element;
+        }
+        foreach ($elementsToRemove as $element) {
+            $element->parentNode->removeChild($element);
+        }
         $inside = '';
         if ($body) {
             foreach ($body->childNodes as $child) {
                 $inside .= $dom->saveHTML($child);
             }
         }
-        $prompt = "Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Alkuperäinen otsikko on meta-tagissa, jos se on annettu. Esittely löytyy artikkkelin alusta. Artikkeli: " . $ogTitle . $inside;
+        $tiedosto = fopen("temp_ai/linkkihaku_inside.txt", 'w');
+        fwrite($tiedosto, $inside);
+        fclose($tiedosto);
+        $prompt = $ohjeistus . $ogTitle . $inside;
         try {
             $result = $this->AI->client
             ->generativeModel(model: $this->AI->model)

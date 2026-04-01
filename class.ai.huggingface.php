@@ -427,13 +427,21 @@ class AIHuggingface {
             return [false, "Structurea '$jsonSchemaAvain' ei löydy."];
         }
     }
-
-    function linkkiHaku(string $linkki, $structure = null, $temperature = 0.0, $max_tokens = null, $haetaankoAiempi = false) { // Useimmat lehtisivut ovat liian pitkiä, jotta tämä toimisi
+    /**
+     * Hakee linkistä sivun koodin, karsii siitä paljon pois ja tekee siitä strukturoidun haun Gemini API:iin käyttäen aiemmin tallennettua JSON-skeemaa.
+     * 
+     * Koodin on tarkoitus hakea artikkelien tietoja, oletus structure ja ohjeistus sekä artikkelien koodin karsinta on rakennettu tätä varten. Koodi ei kykyne lukemaan AJAX:lla
+     * generoitua sivun sisältöä. Sivun koodista karsitaan niin paljon pois, että lehden nimeä ei saata löytyä, mutta testailussa tekoäly aina jotenkin silti löysi sen.
+     */
+    function linkkiHaku(string $linkki, $structure = null, string|null $ohjeistus = null, $temperature = 0.0, $max_tokens = null, $haetaankoAiempi = false) { // Useimmat lehtisivut ovat liian pitkiä, jotta tämä toimisi
         if(!is_null($max_tokens)) {
             $this->max_tokens = $max_tokens;
         }
         if($structure == null) {
             $structure = "Artikkeli";
+        }
+        if($ohjeistus == null) {
+            $ohjeistus =' Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Alkuperäinen otsikko on meta-tagissa, jos se on annettu. Esittely löytyy artikkkelin alusta. Anna kieli ISO 639:2002 -standardin mukaan. Artikkeli: ';
         }
         $valittuStructure = json_encode($this->jsonSchemas[$structure]);
         $structureHash = md5($valittuStructure);
@@ -448,26 +456,46 @@ class AIHuggingface {
             return [true, $contents];
         }
 
-        $opts = [
-            'http' => [
-                'method'  => 'GET',
-                'header'  => implode("\r\n", [
-                    'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language: fi-FI,fi;q=0.9,en-US;q=0.8,en;q=0.7'
-                ]),
-                'timeout' => 20
-            ],
-            'ssl' => [
-                'verify_peer' => true,
-                'verify_peer_name' => true
-            ]
-        ];
-        $context = stream_context_create($opts);
-        $artikkeli = @file_get_contents($linkki, false, $context);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $linkki);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_ENCODING, '');
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language: en-US,en;q=0.9',
+            'Accept-Encoding: gzip, deflate',  // Include 'br' for Brotli (Cloudflare often uses it)
+            'Referer: https://www.google.com/',  // Or a relevant academic site like https://scholar.google.com/
+            'Cache-Control: no-cache',
+            'DNT: 1',
+            'Upgrade-Insecure-Requests: 1',
+            'Sec-Fetch-Dest: document',
+            'Sec-Fetch-Mode: navigate',
+            'Sec-Fetch-Site: none',
+            'Sec-Fetch-User: ?1',
+            'Sec-Ch-Ua: "Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            'Sec-Ch-Ua-Mobile: ?0',
+            'Sec-Ch-Ua-Platform: "Windows"'
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);  // Increase timeout
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        $cookieFile = sys_get_temp_dir() . '/cookies.txt'; 
+        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);  // Save cookies
+        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile); // Load cookies
+        $artikkeli = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        if ($httpCode !== 200) {
+            $tiedosto = fopen("vastaus.txt", 'w');
+            fwrite($tiedosto, $artikkeli);
+            fclose($tiedosto);
+            return [false, "HTTP $httpCode: Unable to fetch article. Error: " . $error, $httpCode];
+        }
         if ($artikkeli === false) {
-            $error = error_get_last();
-            return [false, "Linkin lukeminen epäonnistui: " . ($error['message'] ?? 'tuntematon virhe')];
+            return [false, "Linkin lukeminen epäonnistui: " . ($error ?? 'tuntematon virhe'), $httpCode];
         }
         $dom = new DOMDocument();
         // Vältä varoituksia rikkinäisestä HTML:sta
@@ -488,14 +516,23 @@ class AIHuggingface {
         }
 
         $body = $dom->getElementsByTagName('body')->item(0);
+        $xpath = new DOMXPath($dom);
+        $elements = $xpath->query('//*[text()="References"]/parent::* | //script | //table | //footer | //aside | //nav | //style | //img | //picture | //video | //audio | //iframe | //object | //embed');
+        $elementsToRemove = [];
+        foreach ($elements as $element) {
+            $elementsToRemove[] = $element;
+        }
+        foreach ($elementsToRemove as $element) {
+            $element->parentNode->removeChild($element);
+        }
         $inside = '';
         if ($body) {
             foreach ($body->childNodes as $child) {
                 $inside .= $dom->saveHTML($child);
             }
         }
-
-        $prompt = "Palauta vastaus JSON-muodossa seuraavan rakenteen mukaisesti: " . $valittuStructure . " Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Alkuperäinen otsikko on meta-tagissa, jos se on annettu. Esittely löytyy artikkkelin alusta. Artikkeli: " . $ogTitle . $inside;
+        
+        $prompt = "Palauta vastaus JSON-muodossa seuraavan rakenteen mukaisesti: " . $valittuStructure . $ohjeistus  . $ogTitle . $inside;
         try {
             $response = $this->AI->client->chat()->create([
                 'model' => $this->AI->model,

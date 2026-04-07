@@ -1,0 +1,80 @@
+div {
+    display: flex;
+}
+.paaosa {
+    flex-direction: column;
+    width: fit-content;
+}
+.linkkiyksikkö {
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+    align-items: center;
+    padding: 10px;
+    margin-right: auto;
+    margin-left: auto;
+}
+.linkkihaku {
+    flex-direction: row;
+    height: 200px;
+    align-items: center;
+    justify-content: center;
+}
+.linkkihaku input, .linkkihaku select, .linkkihaku button {
+    padding: 10px;
+    margin: 10px;
+}
+.linkkilomake {
+    flex-direction: column;
+    width: inherit;
+    align-items: center;
+}
+.linkkirivi {
+    flex-direction: row;
+    width: 100%;
+    align-items: baseline;
+    justify-content: center;
+}
+label {
+    text-align: center;
+}
+textarea, input {
+    padding: 8px;
+}
+#linkkiInput {
+    width: 400px;
+}
+#model, #apiSelect {
+    margin: 5px 10px !important;
+}
+#apiSelect {
+    width: 130px;
+}
+#model {
+    width: fit-content;
+}
+#otsikko {
+    height: 48px;
+}
+#otsikko, #lehti {
+    width: 400px;
+    text-align: center;
+}
+#lehti {
+    height: 32px;
+}
+#tekijat {
+    width: 200px;
+    height: 300px;
+}
+#organisaatiot {
+    width: 250px;
+    height: 300px;
+}
+#kieli, #julkaisuvuosi {
+    width: 50px;
+}
+#esittely {
+    width: 550px;
+    height: 300px;
+}

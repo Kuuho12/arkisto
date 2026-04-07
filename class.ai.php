@@ -49,16 +49,35 @@ class Ai {
                 ->withBaseUri('https://router.huggingface.co/v1')
                 ->make();
             $this->childClass = new AIHuggingface($this, $this->savetoCache);
+            if(is_null($this->model)) {
+                $this->model = "google/gemma-3-27b-it:featherless-ai";
+            }
             break;
         case "openai":
             $this->client = OpenAI::client($this->apiKey);
             $this->childClass = new AIOpenAI($this, $this->savetoCache);
+            if(is_null($this->model)) {
+                $this->model = "gpt-5-nano";
+            }
             break;
         case "gemini":
             $this->client = \Gemini::client($this->apiKey);
             $this->childClass = new AIGemini($this, $this->savetoCache);
+            if(is_null($this->model)) {
+                $this->model = "gemini-2.5-flash";
+            }
             break;
         }
+    }
+    public function setModel($model) {
+        if(gettype($model) === 'string') {
+            $this->model = $model;
+        } else {
+            throw new Exception("Model must be a string.");
+        }
+    }
+    public function getModel() {
+        return $this->model;
     }
     /**
      * Muotoilee promptin esivalmistellun kyselyn pohjalta ja antaa lapsiluokan hoitaa tekstihaun loppuun.
@@ -66,7 +85,7 @@ class Ai {
      * @param array $arvot Lista haun osista, jotka liitetään esivalmisteltuun kyselyyn
      * @param object $childClass Lapsiluokka, joka hoitaa haun loppuun
      */
-    function tekstiHaku($arvot, ...$extraParametrit) {
+    function tekstiHaku(array $arvot, ...$extraParametrit) {
         $prompt = $this->valittuEsivalmisteltuKysely;
         $systemInstruction = $arvot["systemInstruction"] ?? null;
         unset($arvot["systemInstruction"]);
@@ -81,7 +100,7 @@ class Ai {
         }
         return $this->childClass->tekstiHaku($prompt, ...$extraParametrit);
     }
-    function suoritaMuotoilu($arvot) {
+    function suoritaMuotoilu(array $arvot) {
         $prompt = $this->valittuEsivalmisteltuKysely;
         $systemInstruction = $arvot["systemInstruction"] ?? null;
         unset($arvot["systemInstruction"]);
@@ -96,7 +115,7 @@ class Ai {
             return $prompt;
         }
     }
-    function suoritaHaku($arvot, ...$extraParametrit) {
+    function suoritaHaku(array $arvot, ...$extraParametrit) {
         return $this->childClass->suoritaHaku($arvot, ...$extraParametrit);
     }
     /**
@@ -106,7 +125,7 @@ class Ai {
      * @param object $childClass Lapsiluokka, joka hoitaa haun loppuun
      * @param string $filePath Tiedoston polku, jota saatetaan käytetään lapsiluokasta riippuen tiedoston hakuun
      */
-    function tiedostoHaku($arvot, $filePath = null, ...$extraParametrit) {
+    function tiedostoHaku(array $arvot, ?string $filePath = null, ...$extraParametrit) {
         $prompt = $this->valittuEsivalmisteltuKysely;
         $systemInstruction = $arvot["systemInstruction"] ?? null;
         unset($arvot["systemInstruction"]);
@@ -160,7 +179,7 @@ class Ai {
      * @param object $childClass Lapsiluokka, joka hoitaa haun loppuun
      * @param string $jsonSchema JSON-skeeman nimi, jolla haetaan lapsiluokan julkisesta listasta JSON-skeema
      */
-    function strukturoituHaku($arvot, $jsonSchema, ...$extraParametrit) {
+    function strukturoituHaku(array $arvot, $jsonSchema, ...$extraParametrit) {
         $prompt = $this->valittuEsivalmisteltuKysely;
         $systemInstruction = $arvot["systemInstruction"] ?? null;
         unset($arvot["systemInstruction"]);
@@ -210,14 +229,14 @@ class Ai {
         $this->esivalmistellutKyselyt[$kyselyNimi] = $kyselyTeksti;
         return true;
     }
-    public function modelExists($modelName = null) {
+    public function modelExists(?string $modelName = null) {
         if(method_exists($this->childClass, 'modelExists')) {
             return $this->childClass->modelExists($modelName);
         } else {
             throw new Exception("Lapsiluokalla ei ole modelExists-metodia.");
         }
     }
-    public function modelWorks($modelName = null) {
+    public function modelWorks(?string $modelName = null) {
         if(method_exists($this->childClass, 'modelWorks')) {
             return $this->childClass->modelWorks($modelName);
         } else {

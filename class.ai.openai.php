@@ -131,7 +131,7 @@ class AIOpenAI {
             'required' => ['Alkuperäinen otsikko', 'Tekijät', 'Tekijöiden organisaatiot', 'Lehden nimi', 'Julkaisuvuosi', 'Esittely', 'Kieli', 'Maksullinen']
         ]
     ];
-    public function __construct($AIData, $savetoCache = null) {
+    public function __construct($AIData, ?bool $savetoCache = null) {
         $this->AI = $AIData;
         if(!is_null($savetoCache)) {
             $this->savetoCache = $savetoCache;
@@ -158,7 +158,7 @@ class AIOpenAI {
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
      * @param bool $haetaankoAiempi Määrää haetaanko aiemmin tallennettu vastaus, joka tehtiin samalla promptilla, tiedostolla, mallilla, lämpötilalla ja max_tokens-arvolla
      */
-    public function tekstiHaku($prompt, $temperature = null, $max_tokens = null, $haetaankoAiempi = false)
+    public function tekstiHaku(string $prompt, ?float $temperature = null, ?int $max_tokens = null, bool $haetaankoAiempi = false)
     {
         if(!is_null($temperature)) {
             $this->temperature = $temperature;
@@ -223,7 +223,7 @@ class AIOpenAI {
         }
         
     }
-    function chattays($arvot, $chathistory, $temperature = null, $max_tokens = null) {
+    function chattays(array $arvot, array $chathistory, ?float $temperature = null, ?int $max_tokens = null) {
         if(!is_null($temperature)) {
             $this->temperature = $temperature;
         }
@@ -269,7 +269,7 @@ class AIOpenAI {
         }
 
     }
-    function suoritaHaku($arvot, $filePath = null, $temperature = null, $max_tokens = null, $haetaankoAiempi = false) {
+    function suoritaHaku($arvot, ?string $filePath = null, ?float $temperature = null, ?int $max_tokens = null, bool $haetaankoAiempi = false) {
         if(!is_null($temperature)) {
             $this->temperature = $temperature;
         }
@@ -396,7 +396,7 @@ class AIOpenAI {
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
      * @param bool $haetaankoAiempi Määrää haetaanko aiemmin tallennettu vastaus, joka tehtiin samalla promptilla, tiedostolla, mallilla, lämpötilalla ja max_tokens-arvolla
      */
-    function tiedostoHaku1($prompt, $filePath, $temperature = null, $max_tokens = null, $haetaankoAiempi = false) {
+    function tiedostoHaku1($prompt, string $filePath, ?float $temperature = null, ?int $max_tokens = null, bool $haetaankoAiempi = false) {
         if(!is_null($temperature)) {
             $this->temperature = $temperature;
         }
@@ -472,7 +472,7 @@ class AIOpenAI {
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
      * @param bool $haetaankoAiempi Määrää haetaanko aiemmin tallennettu vastaus, joka tehtiin samalla promptilla, tiedostolla, mallilla, lämpötilalla ja max_tokens-arvolla
      */
-    function strukturoituHaku($prompt, $jsonSchema, $temperature = null, $max_tokens = null, $haetaankoAiempi = false) {
+    function strukturoituHaku(string $prompt, $jsonSchema, ?float $temperature = null, ?int $max_tokens = null, bool $haetaankoAiempi = false) {
         if(!is_null($temperature)) {
             $this->temperature = $temperature;
         }
@@ -508,7 +508,7 @@ class AIOpenAI {
             $vastaus = $response->choices[0]->message->content;
             $parsed = json_decode($vastaus, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
-                return [false, "Invalid JSON response"];
+                return [false, "Invalid JSON response", $vastaus];
             }
             if($this->savetoCache) {
                 $file = fopen($tiedostonPolku, 'w');
@@ -558,8 +558,15 @@ class AIOpenAI {
      * 
      * Koodin on tarkoitus hakea artikkelien tietoja, oletus structure ja ohjeistus sekä artikkelien koodin karsinta on rakennettu tätä varten. Koodi ei kykyne lukemaan AJAX:lla
      * generoitua sivun sisältöä. Sivun koodista karsitaan niin paljon pois, että lehden nimeä ei saata löytyä, mutta testailussa tekoäly aina jotenkin silti löysi sen.
+     * 
+     * @param string $linkki Nettisivun linkki, jonka sisältö haetaan
+     * @param mixed $structure JSON-skeeman nimi, jolla haetaan tallennettu JSON-skeema. Oletuksena "Artikkeli", joka on rakennettu artikkelien tietojen hakua varten.
+     * @param string|null $ohjeistus Tekoälylle annettavan promptin alkuun tuleva ohjeistus, joka korvaa oletusohjeistuksen. Oletusohjeistus on rakennettu artikkelien tietojen hakua varten.
+     * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-2.0)
+     * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
+     * @param bool $haetaankoAiempi Boolean, joka kertoo haetaanko aiemmin tallennettu vastaus vai tehdäänkö uusi haku. Oletuksena false, eli tehdään aina uusi haku.
      */
-    function linkkiHaku(string $linkki, $structure = null, string|null $ohjeistus = null, $temperature = null, $max_tokens = null, $haetaankoAiempi = false) {
+    function linkkiHaku(string $linkki, $structure = null, string|null $ohjeistus = null, ?float $temperature = null, ?int $max_tokens = null, bool $haetaankoAiempi = false) {
         if(!is_null($temperature)) {
             $this->temperature = $temperature;
         }
@@ -679,7 +686,7 @@ class AIOpenAI {
             $vastaus = $response->choices[0]->message->content;
             $parsed = json_decode($vastaus, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
-                return [false, "Invalid JSON response"];
+                return [false, "Invalid JSON response", $vastaus];
             }
             if($this->savetoCache) {
                 $file = fopen($tiedostonPolku, 'w');
@@ -695,7 +702,7 @@ class AIOpenAI {
         }
     }
 
-    function modelExists($modelName = null) {
+    function modelExists(?string $modelName = null) {
         if ($modelName === null) {
             $modelName = $this->AI->model;
         }
@@ -709,7 +716,7 @@ class AIOpenAI {
         }
     }
 
-    function modelWorks($modelName = null) {
+    function modelWorks(string|null $modelName = null) {
         if ($modelName === null) {
         $modelName = $this->AI->model;
         }

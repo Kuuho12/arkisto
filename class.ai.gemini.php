@@ -30,7 +30,7 @@ class AIGemini {
         "video/mp4" => MimeType::VIDEO_MP4
     ); 
     public $structured_configs = [];
-    public function __construct($AIData, $savetoCache = null, $systemInstruction = "") {
+    public function __construct($AIData, ?bool $savetoCache = null, $systemInstruction = "") {
         $this->AI = $AIData;
         if(!is_null($savetoCache)) {
             $this->savetoCache = $savetoCache;
@@ -73,7 +73,7 @@ class AIGemini {
      * 
      * @param string $prompt Tekoälylle lähetettävä kysely
      */
-    public function tekstiHaku(string $prompt, $temperature = null, $max_output_tokens = null, $haetaankoAiempi = false, $systemInstruction = null) {
+    public function tekstiHaku(string $prompt, ?float $temperature = null, ?int $max_output_tokens = null, bool $haetaankoAiempi = false, $systemInstruction = null) {
         if(!is_null($temperature)) {
             $this->temperature = $temperature;
         }
@@ -121,8 +121,10 @@ class AIGemini {
         return [false, "Haku epäonnistui. Error: " . $e->getMessage()];
     }
     }
-
-    function chattays($arvot, $chathistory, $temperature = null, $max_output_tokens = null, $systemInstruction = null) {
+    /**
+     * 
+     */
+    function chattays(array $arvot, array $chathistory, ?float $temperature = null, ?int $max_output_tokens = null, $systemInstruction = null) {
         if(!is_null($temperature)) {
             $this->temperature = $temperature;
         }
@@ -164,7 +166,7 @@ class AIGemini {
     /**
      * 
      */
-    function suoritaHaku($arvot, $temperature = null, $max_output_tokens = null, $haetaankoAiempi = false) {
+    function suoritaHaku(array $arvot, ?float $temperature = null, ?int $max_output_tokens = null, bool $haetaankoAiempi = false) {
         if(!is_null($temperature)) {
             $this->temperature = $temperature;
         }
@@ -253,8 +255,11 @@ class AIGemini {
      * Käsiteltävt tiedostot lisätään lisaaTiedosto-funktiolla
      * 
      *  @param string $prompt Tekoälylle lähetettävä kysely
+     *  @param float|null $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-2.0)
+     *  @param int|null $max_output_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
+     *  @param mixed $systemInstruction Tekoälylle annettava yleinen ohjeistus, joka korvaa aiemman system instructionin. System instruction on ohjeistus, joka annetaan tekoälylle ennen varsinaista promptia
      */
-    function tiedostoHaku2 ($prompt, $temperature = null, $max_output_tokens = null, $systemInstruction = null) {
+    function tiedostoHaku2 ($prompt, ?float $temperature = null, ?int $max_output_tokens = null, $systemInstruction = null) {
         if(!is_null($temperature)) {
             $this->temperature = $temperature;
         }
@@ -399,7 +404,7 @@ class AIGemini {
      * @param string $prompt Tekoälylle lähetettävä kysely
      * @param string $structure JSON-skeeman nimi, jolla haetaan tallennettu JSON-skeema
      */
-    function strukturoituHaku($prompt, $structure, $haetaankoAiempi = false, $systemInstruction = null) {
+    function strukturoituHaku(string $prompt, $structure, bool $haetaankoAiempi = false, $systemInstruction = null) {
         if(!is_null($systemInstruction)) {
             $this->systemInstruction = $systemInstruction;
         }
@@ -526,8 +531,14 @@ class AIGemini {
      * 
      * Koodin on tarkoitus hakea artikkelien tietoja, oletus structure ja ohjeistus sekä artikkelien koodin karsinta on rakennettu tätä varten. Koodi ei kykyne lukemaan AJAX:lla
      * generoitua sivun sisältöä. Sivun koodista karsitaan niin paljon pois, että lehden nimeä ei saata löytyä, mutta testailussa tekoäly aina jotenkin silti löysi sen.
+     * 
+     * @param string $linkki Nettisivun linkki, jonka sisältö haetaan
+     * @param mixed $structure JSON-skeeman nimi, jolla haetaan tallennettu JSON-skeema. Oletuksena "Artikkeli", joka on rakennettu artikkelien tietojen hakua varten.
+     * @param string|null $ohjeistus Tekoälylle annettavan promptin alkuun tuleva ohjeistus, joka korvaa oletusohjeistuksen. Oletusohjeistus on rakennettu artikkelien tietojen hakua varten.
+     * @param bool $haetaankoAiempi Boolean, joka kertoo haetaanko aiemmin tallennettu vastaus vai tehdäänkö uusi haku. Oletuksena false, eli tehdään aina uusi haku.
+     * @param mixed $systemInstruction Tekoälylle annettava yleinen ohjeistus, joka korvaa aiemman system instructionin. System instruction on ohjeistus, joka annetaan tekoälylle ennen varsinaista promptia ja joka vaikuttaa koko haun kulkuun. Oletuksena null, jolloin käytetään aiempaa system instructionia.
      */
-    function linkkiHaku(string $linkki, $structure = null, string|null $ohjeistus = null, $haetaankoAiempi = false, $systemInstruction = null) {
+    function linkkiHaku(string $linkki, $structure = null, string|null $ohjeistus = null, bool $haetaankoAiempi = false, $systemInstruction = null) {
         if(!is_null($systemInstruction)) {
             $this->systemInstruction = $systemInstruction;
         }
@@ -548,7 +559,6 @@ class AIGemini {
             fclose($file);
             return [true, $contents];
         }
-        
         // $opts = [
         //     'http' => [
         //         'method'  => 'GET',
@@ -650,9 +660,9 @@ class AIGemini {
                 $inside .= $dom->saveHTML($child);
             }
         }
-        $tiedosto = fopen("temp_ai/linkkihaku_inside.txt", 'w');
+        /*$tiedosto = fopen("temp_ai/linkkihaku_inside.txt", 'w');
         fwrite($tiedosto, $inside);
-        fclose($tiedosto);
+        fclose($tiedosto);*/
         $prompt = $ohjeistus . $ogTitle . $inside;
         try {
             $result = $this->AI->client
@@ -699,7 +709,7 @@ class AIGemini {
         }
     }
 
-    function modelExists($modelName = null) {
+    function modelExists(string|null $modelName = null) {
         if ($modelName === null) {
             $modelName = $this->AI->model;
         }
@@ -719,7 +729,7 @@ class AIGemini {
      * 
      * @param $modelName Mallin nimi
      */
-    function modelWorks($modelName = null) {
+    function modelWorks(string|null $modelName = null) {
         if ($modelName === null) {
         $modelName = $this->AI->model;
         }
@@ -746,14 +756,14 @@ class AIGemini {
         }
     }
 
-    function listModels($pageSize = null) {
-        return $this->AI->client->models()->list(pageSize: $pageSize);
+    function listModels(?int $pageSize = null, ?string $nextPageToken = null) {
+        return $this->AI->client->models()->list(pageSize: $pageSize, nextPageToken: $nextPageToken);
     }
     /**
      * Laskee promptin tokenit, mukaan lukien tallennetut tiedostot.
      * Tarkoitus käyttää pitkien promptien tokenien laskemiseen ennen haun tekemistä
      */
-    function laskeTokenit($arvot) {
+    function laskeTokenit(array $arvot) {
         $prompt = $this->AI->suoritaMuotoilu($arvot);
         try {
             if(count($this->AI->files) > 0) {

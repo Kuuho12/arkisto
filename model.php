@@ -59,6 +59,11 @@ function tulostaChattiIkkuna() {
     require_once 'newViews/tulostaChatIkkuna.php';
     return ob_get_clean();
 }
+function tulostaLinkkilomake() {
+    ob_start();
+    require_once 'newViews/tulostaLinkkilomake.php';
+    return ob_get_clean();
+}
 /**
  * Käytetään datan hakuun tietokannasta
  * 

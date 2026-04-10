@@ -1,16 +1,26 @@
 
 <div class="paaosa">
     <div class="linkkihaku">
-    <input type="text" placeholder="Syötä artikkelin linkki" id="linkkiInput">
-    <div class="linkkiyksikkö">
-        <select name="apiSelect" id="apiSelect">
-            <option value="gemini" selected>Gemini</option>
-            <option value="huggingface">Hugging Face</option>
-            <option value="openai">OpenAI</option>
-        </select>
-        <input type="text" name="model" id="model" placeholder="" value="gemini-2.5-flash"> <!--Qwen/Qwen3-32B:groq gemini-2.5-flash gpt-5-nano-->
-    </div>
-    <button name="haeButton" id="haeButton">Hae</button>
+        <div class="linkkiyksikkö">
+            <input type="text" placeholder="Syötä artikkelin linkki" id="linkkiInput">
+            <div class="linkkirivi" id="tagityyppiRivi">
+                <input type="radio" id="tagit_null" name="tagityyppi" value="null" checked>
+                <label for="tagit_null">Oletustägit</label>
+                <input type="radio" id="tagit_true" name="tagityyppi" value="true">
+                <label for="tagit_true">Ehdottaa tägejä</label>
+                <input type="radio" id="tagit_false" name="tagityyppi" value="false">
+                <label for="tagit_false">Ei tägejä</label>
+            </div>
+        </div>
+        <div class="linkkiyksikkö">
+            <select name="apiSelect" id="apiSelect">
+                <option value="gemini" selected>Gemini</option>
+                <option value="huggingface">Hugging Face</option>
+                <option value="openai">OpenAI</option>
+            </select>
+            <input type="text" name="model" id="model" placeholder="" value="gemini-2.5-flash"> <!--Qwen/Qwen3-32B:groq gemini-2.5-flash gpt-5-nano-->
+        </div>
+        <button name="haeButton" id="haeButton">Hae</button>
     </div>
         <form action="">
             <div class="linkkilomake">
@@ -56,6 +66,17 @@
                     <textarea name="esittely" id="esittely"></textarea>
                     </div>
                 </div>
+                <div class="linkkirivi">
+                    <div class="linkkiyksikkö">
+                        <label for="tagit">Tägit</label>
+                        <textarea name="tagit" id="tagit"></textarea>
+                    </div>
+                </div>
+                <!---<div class="linkkirivi">
+                    <div class="linkkiyksikkö">
+                        <button type="submit">Tallenna (Ei toimi vielä)</button>
+                    </div>
+                </div>-->
             </div>
         </form>
 </div>
@@ -84,6 +105,7 @@
         const linkki = linkkiInput.value.trim();
         const api = apiSelect.value;
         const model = modelInput.value.trim();
+        const tagityyppi = document.querySelector('input[name="tagityyppi"]:checked').value;
         if(linkki === "") {
             alert("Syötä artikkelin linkki ennen hakua.");
             return;
@@ -95,7 +117,7 @@
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({linkki : linkki, api : api, model : model})
+            body: JSON.stringify({linkki : linkki, api : api, model : model, tagityyppi : tagityyppi})
         })
         .then(response => {responseData = response; return responseData.json(); })
         .then(data => {
@@ -109,9 +131,6 @@
                 let tekijatTeksti = "";
                 data.tekijat.forEach((tekija, index) => {
                     tekijatTeksti += tekija + "\n";
-                    /*if(index < data.tekijat.length - 1) {
-                        tekijatTeksti += ", ";
-                    }*/
                 });
                 document.getElementById('tekijat').value = tekijatTeksti;
                 let organisaatiotTeksti = "";
@@ -119,11 +138,30 @@
                     organisaatiotTeksti += organisaatio + "\n";
                 });
                 document.getElementById('organisaatiot').value = organisaatiotTeksti;
+                let tagitTeksti = "";
+                if(data.tagit !== null) {
+                    data.tagit.forEach((tagi, index) => {
+                        tagitTeksti += tagi;
+                        if(index < data.tagit.length - 1) {
+                            tagitTeksti += ", ";
+                        }
+                    });
+                    document.getElementById('tagit').value = tagitTeksti;
+                }
             } else {
                 alert("Haku epäonnistui: " + data.message);
                 if(data.error_details !== null) {
                     console.error("Error details:", data.error_details);
                 }
+                document.getElementById('otsikko').value = "";
+                document.getElementById('lehti').value = "";
+                document.getElementById('julkaisuvuosi').value = 2026;
+                document.getElementById('maksullinen').checked = false;
+                document.getElementById('kieli').value = "";
+                document.getElementById('esittely').value = "";
+                document.getElementById('tekijat').value = "";
+                document.getElementById('organisaatiot').value = "";
+                document.getElementById('tagit').value = "";
             }
         })
         .catch(error => {

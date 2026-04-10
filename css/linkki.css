@@ -16,11 +16,11 @@ div {
 }
 .linkkihaku {
     flex-direction: row;
-    height: 200px;
     align-items: center;
     justify-content: center;
+    margin: 20px 0px;
 }
-.linkkihaku input, .linkkihaku select, .linkkihaku button {
+.linkkihaku input, .linkkihaku select, .linkkihaku button, button[type="submit"] {
     padding: 10px;
     margin: 10px;
 }
@@ -44,7 +44,7 @@ textarea, input {
 #linkkiInput {
     width: 400px;
 }
-#model, #apiSelect {
+#model, #apiSelect, #linkkiInput, #tagityyppiRivi {
     margin: 5px 10px !important;
 }
 #apiSelect {
@@ -75,6 +75,13 @@ textarea, input {
     width: 50px;
 }
 #esittely {
-    width: 550px;
+    width: 595px;
     height: 300px;
+}
+#tagit {
+    width: 595px;
+    height: 95px;
+}
+.flex-direction-row {
+    flex-direction: row !important;
 }

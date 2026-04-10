@@ -30,6 +30,7 @@ class AIGemini {
         "video/mp4" => MimeType::VIDEO_MP4
     ); 
     public $structured_configs = [];
+    public $defaultTags = ["Aikuisväestö", "Analytiikka", "Data", "Digitaalinen journalismi", "Digitalisaatio", "Disinformaatio", "Faktantarkistus", "Haitat", "Informaatiohäiriöt", "Informaatiovaikuttaminen", "Informaatioympäristöt", "Journalismi", "Journalismin käytännöt", "Journalismin roolit", "Keskusteluryhmät", "Lapset ja nuoret", "Lukutaidot", "Luottamus", "Media-ala", "Moderointi", "Osallistuminen", "Perus- ja ihmisoikeudet", "Politisoituminen", "Polarisaatio", "Poliittiset kampanjat", "Politiikkatoimet", "Populismi", "Ratkaisukeinot", "Sosiaalinen media", "Sääntely", "Sukupuoli", "Taustamuuttujat", "Teknologiajätit", "Tekoäly", "Tunteet", "Turvallisuus", "Uutisten kulutus", "Verkkoalustat", "Verkkohäirintä", "Verkkokeskustelut", "Vihapuhe", "Vinoumat", "Yhteisöt", "Yksityisyys"];
     public function __construct($AIData, ?bool $savetoCache = null, $systemInstruction = "") {
         $this->AI = $AIData;
         if(!is_null($savetoCache)) {
@@ -48,7 +49,8 @@ class AIGemini {
                     "Julkaisuvuosi" => new Schema(type: DataType::INTEGER),
                     "Esittely" => new Schema(type: DataType::STRING),
                     "Kieli" => new Schema(type: DataType::STRING),
-                    "Maksullinen" => new Schema(type: DataType::BOOLEAN)
+                    "Maksullinen" => new Schema(type: DataType::BOOLEAN),
+                    "Tägit" => new Schema(type: DataType::ARRAY, items: new Schema(type: DataType::STRING))
                 ], 
                 "required" => [
                     "Alkuperäinen otsikko",
@@ -529,24 +531,38 @@ class AIGemini {
     /**
      * Hakee linkistä sivun koodin, karsii siitä paljon pois ja tekee siitä strukturoidun haun Gemini API:iin käyttäen aiemmin tallennettua JSON-skeemaa.
      * 
-     * Koodin on tarkoitus hakea artikkelien tietoja, oletus structure ja ohjeistus sekä artikkelien koodin karsinta on rakennettu tätä varten. Koodi ei kykyne lukemaan AJAX:lla
+     * Koodin on tarkoitus hakea artikkelien tietoja. Oletus structure ja ohjeistus sekä artikkelien koodin karsinta on rakennettu tätä varten. Koodi ei kykyne lukemaan AJAX:lla
      * generoitua sivun sisältöä. Sivun koodista karsitaan niin paljon pois, että lehden nimeä ei saata löytyä, mutta testailussa tekoäly aina jotenkin silti löysi sen.
      * 
      * @param string $linkki Nettisivun linkki, jonka sisältö haetaan
      * @param mixed $structure JSON-skeeman nimi, jolla haetaan tallennettu JSON-skeema. Oletuksena "Artikkeli", joka on rakennettu artikkelien tietojen hakua varten.
      * @param string|null $ohjeistus Tekoälylle annettavan promptin alkuun tuleva ohjeistus, joka korvaa oletusohjeistuksen. Oletusohjeistus on rakennettu artikkelien tietojen hakua varten.
+     * @param array|null|bool $tags Tägit, joita sallitaan oletusstructuren "Tägit"-propertyyn. Oletuksena null, jolloin käytetään oletustageja. Arvolla true tägejä sallitaan mikä tahansa arvo ja false ei sallita yhtään tägiä. Tämä parametri on hyödytön, jos $ohjeistus ei ole null
      * @param bool $haetaankoAiempi Boolean, joka kertoo haetaanko aiemmin tallennettu vastaus vai tehdäänkö uusi haku. Oletuksena false, eli tehdään aina uusi haku.
      * @param mixed $systemInstruction Tekoälylle annettava yleinen ohjeistus, joka korvaa aiemman system instructionin. System instruction on ohjeistus, joka annetaan tekoälylle ennen varsinaista promptia ja joka vaikuttaa koko haun kulkuun. Oletuksena null, jolloin käytetään aiempaa system instructionia.
      */
-    function linkkiHaku(string $linkki, $structure = null, string|null $ohjeistus = null, bool $haetaankoAiempi = false, $systemInstruction = null) {
+    function linkkiHaku(string $linkki, $structure = null, string|null $ohjeistus = null, array|null|bool $tags = null, bool $haetaankoAiempi = false, $systemInstruction = null) {
         if(!is_null($systemInstruction)) {
             $this->systemInstruction = $systemInstruction;
         }
-        if($structure == null) {
-            $structure = "Artikkeli";
+        if($tags === null) {
+            $tags = $this->defaultTags;
         }
         if($ohjeistus == null) {
-            $ohjeistus = "Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Alkuperäinen otsikko on meta-tagissa, jos se on annettu. Esittely löytyy artikkkelin alusta. Anna kieli ISO 639-1:2002 -standardin mukaan. Artikkeli: ";
+            $ohjeistus = "Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Alkuperäinen otsikko on meta-tagissa, jos se on annettu. Esittely löytyy artikkkelin alusta. Anna kieli ISO 639-1:2002 -standardin mukaan.";
+            if($structure == null || $structure == "Artikkeli") {
+                if(!is_bool($tags)) {
+                    $ohjeistus .= " Tägit, joita saa käyttää ovat: " . implode(", ", $tags) . ".";
+                } elseif ($tags) {
+                    $ohjeistus .= " Tägeissä saa käyttää mitä tahansa arvoa.";
+                } else {
+                    $ohjeistus .= ' Älä palauta "tägit"-propertyä vastauksessasi.';
+                }
+            }
+            $ohjeistus .= " Artikkeli: ";
+        }
+        if($structure == null) {
+            $structure = "Artikkeli";
         }
         $valittuStructure = $this->structured_configs[$structure];
         $structureHash = md5(json_encode($valittuStructure));

@@ -126,11 +126,13 @@ class AIOpenAI {
                 'Julkaisuvuosi' => ['type' => 'integer'],
                 'Esittely' => ['type' => 'string'],
                 'Kieli' => ['type' => 'string'],
-                'Maksullinen' => ['type' => 'boolean']
+                'Maksullinen' => ['type' => 'boolean'],
+                'Tägit' => ['type' => 'array', 'items' => ['type' => 'string']]
             ],
-            'required' => ['Alkuperäinen otsikko', 'Tekijät', 'Tekijöiden organisaatiot', 'Lehden nimi', 'Julkaisuvuosi', 'Esittely', 'Kieli', 'Maksullinen']
+            'required' => ['Alkuperäinen otsikko', 'Tekijät', 'Tekijöiden organisaatiot', 'Lehden nimi', 'Julkaisuvuosi', 'Esittely', 'Kieli', 'Maksullinen', 'Tägit']
         ]
     ];
+    public $defaultTags = ["Aikuisväestö", "Analytiikka", "Data", "Digitaalinen journalismi", "Digitalisaatio", "Disinformaatio", "Faktantarkistus", "Haitat", "Informaatiohäiriöt", "Informaatiovaikuttaminen", "Informaatioympäristöt", "Journalismi", "Journalismin käytännöt", "Journalismin roolit", "Keskusteluryhmät", "Lapset ja nuoret", "Lukutaidot", "Luottamus", "Media-ala", "Moderointi", "Osallistuminen", "Perus- ja ihmisoikeudet", "Politisoituminen", "Polarisaatio", "Poliittiset kampanjat", "Politiikkatoimet", "Populismi", "Ratkaisukeinot", "Sosiaalinen media", "Sääntely", "Sukupuoli", "Taustamuuttujat", "Teknologiajätit", "Tekoäly", "Tunteet", "Turvallisuus", "Uutisten kulutus", "Verkkoalustat", "Verkkohäirintä", "Verkkokeskustelut", "Vihapuhe", "Vinoumat", "Yhteisöt", "Yksityisyys"];
     public function __construct($AIData, ?bool $savetoCache = null) {
         $this->AI = $AIData;
         if(!is_null($savetoCache)) {
@@ -554,30 +556,44 @@ class AIOpenAI {
         }
     }
     /**
-     * Hakee linkistä sivun koodin, karsii siitä paljon pois ja tekee siitä strukturoidun haun Gemini API:iin käyttäen aiemmin tallennettua JSON-skeemaa.
+     * Hakee linkistä sivun koodin, karsii siitä paljon pois ja tekee siitä strukturoidun haun OpenAI API:iin käyttäen aiemmin tallennettua JSON-skeemaa.
      * 
-     * Koodin on tarkoitus hakea artikkelien tietoja, oletus structure ja ohjeistus sekä artikkelien koodin karsinta on rakennettu tätä varten. Koodi ei kykyne lukemaan AJAX:lla
+     * Koodin on tarkoitus hakea artikkelien tietoja. Oletus structure ja ohjeistus sekä artikkelien koodin karsinta on rakennettu tätä varten. Koodi ei kykyne lukemaan AJAX:lla
      * generoitua sivun sisältöä. Sivun koodista karsitaan niin paljon pois, että lehden nimeä ei saata löytyä, mutta testailussa tekoäly aina jotenkin silti löysi sen.
      * 
      * @param string $linkki Nettisivun linkki, jonka sisältö haetaan
      * @param mixed $structure JSON-skeeman nimi, jolla haetaan tallennettu JSON-skeema. Oletuksena "Artikkeli", joka on rakennettu artikkelien tietojen hakua varten.
      * @param string|null $ohjeistus Tekoälylle annettavan promptin alkuun tuleva ohjeistus, joka korvaa oletusohjeistuksen. Oletusohjeistus on rakennettu artikkelien tietojen hakua varten.
+     * @param array|null|bool $tags Tägit, joita sallitaan oletusstructuren "Tägit"-propertyyn. Oletuksena null, jolloin käytetään oletustageja. Arvolla true tägejä sallitaan mikä tahansa arvo ja false ei sallita yhtään tägiä. Tämä parametri on hyödytön, jos $ohjeistus ei ole null
      * @param float $temperature Lämpötila, joka vaikuttaa vastauksen luovuuteen (0.0-2.0)
      * @param int|null $max_tokens Maksimimäärä tokeneita, jotka vastauksessa sallitaan
      * @param bool $haetaankoAiempi Boolean, joka kertoo haetaanko aiemmin tallennettu vastaus vai tehdäänkö uusi haku. Oletuksena false, eli tehdään aina uusi haku.
      */
-    function linkkiHaku(string $linkki, $structure = null, string|null $ohjeistus = null, ?float $temperature = null, ?int $max_tokens = null, bool $haetaankoAiempi = false) {
+    function linkkiHaku(string $linkki, $structure = null, string|null $ohjeistus = null, array|null|bool $tags = null, ?float $temperature = null, ?int $max_tokens = null, bool $haetaankoAiempi = false) {
         if(!is_null($temperature)) {
             $this->temperature = $temperature;
         }
         if(!is_null($max_tokens)) {
             $this->max_tokens = $max_tokens;
         }
-        if($structure == null) {
-            $structure = "Artikkeli";
+        if($tags === null) {
+            $tags = $this->defaultTags;
         }
         if($ohjeistus == null) {
-            $ohjeistus = ' Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Alkuperäinen otsikko on meta-tagissa, jos se on annettu. Esittely löytyy artikkkelin alusta. Anna kieli ISO 639:2002 -standardin mukaan. Artikkeli: ' ;
+            $ohjeistus = ' Hae tiedot artikkelista. Et saa keksiä tietoja, jos niitä ei löydy artikkelista. Alkuperäinen otsikko on meta-tagissa, jos se on annettu. Esittely löytyy artikkkelin alusta. Anna kieli ISO 639:2002 -standardin mukaan.';
+            if($structure == null || $structure == "Artikkeli") {
+                if(!is_bool($tags)) {
+                    $ohjeistus .= " Tägit, joita saa käyttää ovat: " . implode(", ", $tags) . ".";
+                } elseif ($tags) {
+                    $ohjeistus .= " Tägeissä saa käyttää mitä tahansa arvoa.";
+                } else {
+                    $ohjeistus .= ' Älä palauta "tägit"-propertyä vastauksessasi.';
+                }
+            }
+            $ohjeistus .= " Artikkeli: ";
+        }
+        if($structure == null) {
+            $structure = "Artikkeli";
         }
         $valittuStructure = json_encode($this->jsonSchemas[$structure]);
         $structureHash = md5($valittuStructure);

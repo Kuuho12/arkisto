@@ -1,0 +1,55 @@
+#tekoalytestaus {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin: 0px auto;
+    align-items: center;
+}
+div.osa {
+    margin: 0px 10px;
+    width: 100%;
+    max-width: 1000px;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+}
+.osa2 {
+    margin: 10px 0px;
+    display: flex;
+    justify-content: center;
+}
+.osa3 {
+    margin: 30px 30px 10px 30px;
+}
+.flex-direction-row {
+    display: flex;
+    flex-direction: row;
+}
+h4, h3, h2, h1, p {
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+}
+h3 {
+    font-weight: normal;
+    font-size: 24px;
+}
+label {
+    padding: 4px;
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    font-size: 18px;
+}
+textarea, input {
+    padding: 8px;
+}
+.vastaus-textarea {
+    width: 92%;
+    height: 500px;
+}
+.vastausosa {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+}
+#prompt {
+    width: 640px;
+    height: 65px;
+}

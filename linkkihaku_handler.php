@@ -53,12 +53,17 @@ switch($tagityyppi) {
 }
 $tulos = $AI->linkkiHaku($linkki, null, null, $tagityyppi);
 
-if($tulos[0]) {
+if($tulos[0] === true) {
     if(!isset($tulos[1]['Alkuperäinen otsikko'])) {
         echo json_encode(['status' => 'success', 'otsikko' => $tulos[1][0]['Alkuperäinen otsikko'], 'lehti' => $tulos[1][0]['Lehden nimi'], 'julkaisuvuosi' => $tulos[1][0]['Julkaisuvuosi'], 'maksullinen' => $tulos[1][0]['Maksullinen'], 'kieli' => $tulos[1][0]['Kieli'], 'tekijat' => $tulos[1][0]['Tekijät'], 'organisaatiot' => $tulos[1][0]['Tekijöiden organisaatiot'], 'esittely' => $tulos[1][0]['Esittely'], 'tagit' => @$tulos[1][0]['Tägit']]);
     } else {
         echo json_encode(['status' => 'success', 'otsikko' => $tulos[1]['Alkuperäinen otsikko'], 'lehti' => $tulos[1]['Lehden nimi'], 'julkaisuvuosi' => $tulos[1]['Julkaisuvuosi'], 'maksullinen' => $tulos[1]['Maksullinen'], 'kieli' => $tulos[1]['Kieli'], 'tekijat' => $tulos[1]['Tekijät'], 'organisaatiot' => $tulos[1]['Tekijöiden organisaatiot'], 'esittely' => $tulos[1]['Esittely'], 'tagit' => @$tulos[1]['Tägit']]);
     }
 } else {
-    echo json_encode(['status' => 'error', 'message' => $tulos[1], 'error_details' => $tulos[2] ?? null]);
+    if($tulos[0] !== false && $tulos[0] !== null) {
+        echo json_encode(['status' => 'error', 'message' => $tulos[1] ?? null, 'error_details' => [$tulos[0], $tulos[2] ?? null]]);
+    }
+    else {
+        echo json_encode(['status' => 'error', 'message' => $tulos[1] ?? null, 'error_details' => $tulos[2] ?? null]);
+    }
 }

@@ -167,6 +167,15 @@
         .catch(error => {
             console.error('Error:', error, responseData);
             alert("Tapahtui virhe haun aikana. Yritä uudestaan.");
+            document.getElementById('otsikko').value = "";
+            document.getElementById('lehti').value = "";
+            document.getElementById('julkaisuvuosi').value = 2026;
+            document.getElementById('maksullinen').checked = false;
+            document.getElementById('kieli').value = "";
+            document.getElementById('esittely').value = "";
+            document.getElementById('tekijat').value = "";
+            document.getElementById('organisaatiot').value = "";
+            document.getElementById('tagit').value = "";
         })
         .finally(() => {
             haeButton.disabled = false;

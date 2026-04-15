@@ -69,6 +69,9 @@ class Ai {
             break;
         }
     }
+    public function getApi() {
+        return $this->api;
+    }
     public function setModel($model) {
         if(gettype($model) === 'string') {
             $this->model = $model;

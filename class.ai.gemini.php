@@ -175,7 +175,12 @@ class AIGemini {
         if(!is_null($max_output_tokens)) {
             $this->max_output_tokens = $max_output_tokens;
         }
-        list($prompt, $systemInstruction) = $this->AI->suoritaMuotoilu($arvot);
+        $systemInstruction = null;
+        if(isset($arvot["systemInstruction"])) {
+            $this->systemInstruction = $arvot["systemInstruction"];
+            unset($arvot["systemInstruction"]);
+        }
+        $prompt = $this->AI->suoritaMuotoilu($arvot);
         if(!is_null($systemInstruction)) {
             $this->systemInstruction = $systemInstruction;
         }

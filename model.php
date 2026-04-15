@@ -64,6 +64,16 @@ function tulostaLinkkilomake() {
     require_once 'newViews/tulostaLinkkilomake.php';
     return ob_get_clean();
 }
+function tulostaKirjautuminenlomake($error) {
+    ob_start();
+    require_once 'newViews\tulostaKirjautuminenlomake.php';
+    return ob_get_clean();
+}
+function tulostaTekoalytestaus() {
+    ob_start();
+    require_once 'newViews/tulostaTekoalytestaus.php';
+    return ob_get_clean();
+}
 /**
  * Käytetään datan hakuun tietokannasta
  * 

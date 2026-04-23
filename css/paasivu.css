@@ -1,0 +1,103 @@
+body {
+    margin: 0;
+    padding: 0;
+}
+h4, h3, h2, h1, p, label {
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    text-align: center;
+}
+h2, h3 {
+    margin: 5px 0px
+}
+a {
+    color: inherit;
+}
+#promptit-listaus > a, header > a {
+    text-decoration: none;
+}
+header {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #ccc;
+}
+.kolmannes {
+    width: calc(1/3 * 100%);
+}
+#paasivu-keskiosa {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px auto;
+}
+#promptit-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin: 20px auto;
+}
+#promptit-header2 {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin: 0px auto;
+}
+#promptit-header3 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+#promptit-listaus {
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+    margin: 0px auto;
+    align-items: center;
+}
+.prompt-item {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    width: 100%;
+}
+.prompt-item:hover {
+    background-color: #f0f0f0;
+}
+.prompt-text {
+    padding: 0px 10px;
+    max-width: 600px;
+    width: 100%;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.prompt-osa0 {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    text-align: center;
+}
+.prompt-osa0, #promptit-header3 {
+    width: 540px;
+    min-width: 540px;
+}
+.prompt-osa {
+    display: flex;
+    flex-direction: column;
+}
+.prompt-osa2 {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+.disabled {
+  pointer-events: none; /* Prevents clicks/interactions */
+  user-select: none;    /* Prevents text selection */
+}

@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Tietokantavirhe: useampi käyttäjätunnus löytyy';
             } else if ($result->num_rows === 1 && password_verify($password, $result->fetch_assoc()['Password_hash'])) {
                 $_SESSION['user'] = $username;
-                header('Location: testisivu.php');
+                header('Location: paasivu.php');
                 exit;
             } else {
                 $error = 'Virheellinen käyttäjätunnus tai salasana';

@@ -5,6 +5,13 @@
     margin: 0px auto;
     align-items: center;
 }
+#tekoalytestaus-controls {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin: 0px auto;
+    align-items: center;
+}
 div.osa {
     margin: 0px 10px;
     width: 100%;

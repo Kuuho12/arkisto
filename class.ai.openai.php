@@ -758,5 +758,13 @@ class AIOpenAI {
             return [false, $e->getMessage(), $malli];  // Any other error likely means model doesn't exist
         }
     }
+    function listModels() {
+        try {
+            $models = $this->AI->client->models()->list();
+            return $models;
+        } catch (\Exception $e) {
+            return [false, "Failed to list models: " . $e->getMessage()];
+        }
+    }
 }
 ?>

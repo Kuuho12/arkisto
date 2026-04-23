@@ -69,9 +69,24 @@ function tulostaKirjautuminenlomake($error) {
     require_once 'newViews\tulostaKirjautuminenlomake.php';
     return ob_get_clean();
 }
-function tulostaTekoalytestaus() {
+function tulostaTekoalytestaus($promptTeksti, $Gemini, $HuggingFace, $OpenAI, $Gemini_model, $HuggingFace_model, $OpenAI_model, $promptId, $error) {
     ob_start();
     require_once 'newViews/tulostaTekoalytestaus.php';
+    return ob_get_clean();
+}
+function tulostaPromptitListaus($prompts) {
+    ob_start();
+    require_once 'newViews/tulostaPromptitListaus.php';
+    return ob_get_clean();
+}
+function tulostaPaasivuHeader($user) {
+    ob_start();
+    require_once 'newViews/tulostaPaasivuHeader.php';
+    return ob_get_clean();
+}
+function tulostaPaasivuKeskiosa() {
+    ob_start();
+    require_once 'newViews/tulostaPaasivuKeskiosa.php';
     return ob_get_clean();
 }
 /**

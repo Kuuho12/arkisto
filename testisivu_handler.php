@@ -29,9 +29,6 @@ $OpenAI_model = $data['OpenAI_model'] ?? "";
 
 $promptId = $data['promptId'] ?? null;
 
-$api = $data['api'] ?? "";
-$model = $data['model'] ?? "";
-
 if(!$Gemini && !$HuggingFace && !$OpenAI) {
     echo json_encode(['status' => 'error', 'message' => 'Vähintään yksi API-valinta on pakollinen.']);
     exit();
@@ -76,25 +73,26 @@ if($action === 0) { // Tallennetaan prompt tietokantaan
     );
     $stmt->bind_param('ssiiisss', $user, $prompt, $Gemini, $HuggingFace, $OpenAI, $Gemini_model, $HuggingFace_model, $OpenAI_model);
     $sqlTulos = $stmt->execute();
+    $promptId = null;
     if (!$sqlTulos) {
         $error = 'Virhe tietojen tallentamisessa: ' . $conn->error;
-    }
+    } 
     $promptId = $stmt->insert_id;
     echo json_encode(["status" => $sqlTulos ? 'success' : 'error', "message" => $sqlTulos ? 'Prompt tallennettu onnistuneesti.' : $error, "promptId" => $promptId]);
 
 } else if($action === 1) { // Suoritetaan haku tekoälyllä ja tallennetaan vastaus tietokantaan
+    $groupCode = $data['groupCode'] ?? time();
+    $api = $data['api'] ?? "";
+    $model = $data['model'] ?? "";
+
     if(!$api) {
         echo json_encode(['status' => 'error', 'message' => 'API-valinta puuttuu.']);
         exit();
     }
     $stmt = $conn->prepare(
-        "SELECT * FROM Prompts WHERE Id = ? AND User = ? AND Prompt = ? AND Gemini = ? AND Hugging_Face = ? AND OpenAI = ? AND Gemini_model = ? AND Hugging_Face_model = ? AND OpenAI_model = ?"
+        "SELECT * FROM Prompts WHERE Id = ? AND Prompt = ? AND Gemini = ? AND Hugging_Face = ? AND OpenAI = ? AND Gemini_model = ? AND Hugging_Face_model = ? AND OpenAI_model = ?"
     );
-    $stmt->bind_param('issiiisss', $promptId, $user, $prompt, $Gemini, $HuggingFace, $OpenAI, $Gemini_model, $HuggingFace_model, $OpenAI_model);
-    /*$stmt = $conn->prepare(
-        "SELECT * FROM Prmpts WHERE Id = ?"
-    );
-    $stmt->bind_param('i', $promptId);*/
+    $stmt->bind_param('isiiisss', $promptId, $prompt, $Gemini, $HuggingFace, $OpenAI, $Gemini_model, $HuggingFace_model, $OpenAI_model);
     $sqlTulos = $stmt->execute();
     $result = $stmt->get_result();
     if (!$sqlTulos) {
@@ -133,9 +131,9 @@ if($action === 0) { // Tallennetaan prompt tietokantaan
     $tulos = $AI->suoritaHaku([$prompt]);
     $vastaus = $tulos[1];
     $stmt = $conn->prepare(
-        "INSERT INTO Ai_responses (Prompt_id, Prompt, Response, Api, Model) VALUES (?, ?, ?, ?, ?)"
+        "INSERT INTO Ai_responses (User, Prompt_id, Group_code, Prompt, Response, Api, Model) VALUES (?, ?, ?, ?, ?, ?, ?)"
     );
-    $stmt->bind_param('issss', $promptId, $prompt, $vastaus, $api, $model);
+    $stmt->bind_param('sidssss', $user, $promptId, $groupCode, $prompt, $vastaus, $api, $model);
     $sqlTulos = $stmt->execute();
     if (!$sqlTulos) {
         $error = 'Virhe tietojen tallentamisessa: ' . $conn->error;
@@ -160,9 +158,9 @@ if($action === 0) { // Tallennetaan prompt tietokantaan
     } else {
         echo json_encode(["status" => 'success', "message" => 'Prompt päivitetty onnistuneesti.']);
     }
-} else if ($action === 3) { // Haetaan kaikki vastaukset tietylle promptille
+} else if ($action === 3) { // Haetaan kaikki vastaukset tietylle promptille (Ei käytössä)
     $responses = getResponses($promptId);
-    echo json_encode(["status" => $responses['status'], "message" => $responses['message']]);
+    echo json_encode(["status" => $responses['status'], "message" => $responses['message'], "responses" => $responses['responses'] ?? null]);
 }
 else {
     echo json_encode(['status' => 'error', 'message' => 'Tuntematon toiminto.']);
@@ -171,14 +169,14 @@ else {
 function getResponses($promptId) {
     global $conn;
     if($promptId === null) {
-        return(['status' => 'error', 'message' => 'Prompt ID puuttuu.']);
+        return ['status' => 'error', 'message' => 'Prompt ID puuttuu.'];
     }
     $stmt = $conn->prepare(
         "SELECT Response, Api, Model FROM Ai_responses WHERE Prompt_id = ?"
     );
     $stmt->bind_param('i', $promptId);
     $sqlTulos = $stmt->execute();
-    if (!$sqlTulos) {
+    if (!$sqlTulos) { // Se ettei löydy vastauksia ei aiheuta virhettä
         $error = 'Virhe tietokantahauissa: ' . $conn->error;
         return ['status' => 'error', 'message' => $error];
     }
@@ -192,5 +190,5 @@ function getResponses($promptId) {
         ];
     }
     $result->free();
-    return ['status' => 'success', 'message' => $responses];
+    return ['status' => 'success', 'message' => 'Haku tehty onnistuneesti', 'responses' => $responses];
 }

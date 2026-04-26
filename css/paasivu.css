@@ -91,6 +91,8 @@ header {
 .prompt-osa {
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    margin-bottom: 1em;
 }
 .prompt-osa2 {
     display: flex;

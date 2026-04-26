@@ -1,3 +1,6 @@
+:root {
+    --eriApiVastaukset: 1;
+}
 #tekoalytestaus {
     display: flex;
     flex-direction: column;
@@ -14,7 +17,7 @@
 }
 div.osa {
     margin: 0px 10px;
-    width: 100%;
+    width: calc(100%/var(--eriApiVastaukset) - 20px);
     max-width: 1000px;
     display: flex;
     align-items: center;
@@ -49,12 +52,20 @@ textarea, input {
 }
 .vastaus-textarea {
     width: 92%;
-    height: 500px;
+    height: 400px;
 }
 .vastausosa {
-    width: 100%;
+    width: calc(var(--eriApiVastaukset) * 1000px + var(--eriApiVastaukset) * 20px);
+    max-width: 100%;
     display: flex;
+    flex-direction: row;
     justify-content: flex-start;
+}
+#vastaukset {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
 }
 #prompt {
     width: 640px;

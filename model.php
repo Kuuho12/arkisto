@@ -69,7 +69,7 @@ function tulostaKirjautuminenlomake($error) {
     require_once 'newViews\tulostaKirjautuminenlomake.php';
     return ob_get_clean();
 }
-function tulostaTekoalytestaus($promptTeksti, $Gemini, $HuggingFace, $OpenAI, $Gemini_model, $HuggingFace_model, $OpenAI_model, $promptId, $error) {
+function tulostaTekoalytestaus($promptTeksti, $Gemini, $HuggingFace, $OpenAI, $Gemini_model, $HuggingFace_model, $OpenAI_model, $promptId, $responses, $errors) {
     ob_start();
     require_once 'newViews/tulostaTekoalytestaus.php';
     return ob_get_clean();

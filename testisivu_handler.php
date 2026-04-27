@@ -29,7 +29,7 @@ $OpenAI_model = $data['OpenAI_model'] ?? "";
 
 $promptId = $data['promptId'] ?? null;
 
-if(!$Gemini && !$HuggingFace && !$OpenAI) {
+if(!$Gemini && !$HuggingFace && !$OpenAI && $action !== 3) {
     echo json_encode(['status' => 'error', 'message' => 'Vähintään yksi API-valinta on pakollinen.']);
     exit();
 }
@@ -158,11 +158,32 @@ if($action === 0) { // Tallennetaan prompt tietokantaan
     } else {
         echo json_encode(["status" => 'success', "message" => 'Prompt päivitetty onnistuneesti.']);
     }
-} else if ($action === 3) { // Haetaan kaikki vastaukset tietylle promptille (Ei käytössä)
-    $responses = getResponses($promptId);
-    echo json_encode(["status" => $responses['status'], "message" => $responses['message'], "responses" => $responses['responses'] ?? null]);
-}
-else {
+} else if ($action === 3) { // Poistetaan (käyttäjän oma) prompti tietokannasta
+    $stmt = $conn->prepare(
+        "DELETE FROM Prompts WHERE Id = ? AND User = ?"
+    );
+    $stmt->bind_param('ss', $promptId, $user);
+    $sqlTulos = $stmt->execute();
+    if (!$sqlTulos) {
+        $error = 'Virhe promptin poistamisessa: ' . $conn->error;
+        echo json_encode(["status" => 'error', "message" => $error]);
+        exit();
+    } else if ($stmt->affected_rows === 0) {
+        echo json_encode(["status" => 'error', "message" => 'Promptia ei onnistuttu poistamaan. Promptia ei löydetty tai se ei ole sinun.']);
+        exit();
+    }
+    $stmt = $conn->prepare(
+        "DELETE FROM Ai_responses WHERE Prompt_id = ?"
+    );
+    $stmt->bind_param('s', $promptId);
+    $sqlTulos = $stmt->execute();
+    if (!$sqlTulos) {
+        $error = 'Virhe promptin vastauksien poistamisessa: ' . $conn->error;
+        echo json_encode(["status" => 'error', "message" => $error]);
+        exit();
+    }
+    echo json_encode(['status' => 'success', 'message' => 'Prompti ja sen vastaukset onnistuneesti poistettu']);
+} else {
     echo json_encode(['status' => 'error', 'message' => 'Tuntematon toiminto.']);
 }
 

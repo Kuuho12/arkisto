@@ -109,7 +109,7 @@
     let onkoGemini = false
     let onkoOpenAI = false
     let onkoHugginFace = false
-    let apiJarjestys = [["gemini", "Gemini"], ["openai", "OpenAI"], ["huggingface", "Hugging Face"]] // 0 = koodissa käytetty nimi (pitää olla sama kuin tietokannassa), 1 = sivulla näytetty nimi
+    let apiJarjestys = [["gemini", "Gemini", false], ["openai", "OpenAI", false], ["huggingface", "Hugging Face", false]] // 0 = koodissa käytetty nimi (pitää olla sama kuin tietokannassa), 1 = sivulla näytetty nimi, 2 = näytetäänkö sivulla tämän apin vastauksia
 
     if(error1 !== null) {
         alert(error1);
@@ -523,7 +523,7 @@
     function showResponses(responses) {
         let changedResponses = []
         let partIndex = 0
-        responses.forEach((response) => {
+        responses.forEach((response) => { // Ryhmitellään responset GroupCoden mukaan
             if(changedResponses.some((part, index) => {
                 if(part.includes(response.GroupCode)) {
                     partIndex = index;
@@ -535,12 +535,11 @@
                 changedResponses[changedResponses.length] = [response.GroupCode, [response]]
             }
         })
-        console.log(changedResponses)
         
         const tyhjaResponse = Object.keys(changedResponses[0][1]).filter(key => changedResponses[0][1][key] === null)
-        let rootStyle = getComputedStyle(root)
-
+        //let rootStyle = getComputedStyle(root)
         
+        let topKysyttyjenMaara = 1;
         changedResponses.forEach((responseGroup) => {
             const vastausosaElement = document.querySelector('#uusinvastausosa');
             let kysyttyjenMaara = 0;
@@ -550,18 +549,17 @@
                 if(responseGroup[1].some((part, index) => {
                     if(part.Api == api[0]) {
                         kysyttyjenMaara++
-                        onkoApi = true
-                        response = part
+                        onkoApi = true;
+                        api[2] = true;
+                        response = part;
                         return true;
                     }
-                })) {
+                })) { 
 
                 }
                 const apiVastausDiv = document.createElement("div")
                 apiVastausDiv.classList.add('osa', api[0] + 'osa');
-                if(!onkoApi) { 
-                    apiVastausDiv.style.display = "none" 
-                } else {
+                if (onkoApi) {
                     const h3 = document.createElement('h3');
                     //if(response.Status === 'success') {
                         h3.textContent = api[1] + ' vastaus:';
@@ -576,8 +574,8 @@
                 }
                 vastausosaElement.appendChild(apiVastausDiv);
             })
-            if(rootStyle.getPropertyValue("--eriApiVastaukset") < kysyttyjenMaara) {
-                root.style.setProperty("--eriApiVastaukset", kysyttyjenMaara)
+            if(topKysyttyjenMaara < kysyttyjenMaara) {
+                topKysyttyjenMaara = kysyttyjenMaara
             }
             vastausosaElement.setAttribute('id', '');
             const uusiVastausosa = document.createElement('div');
@@ -585,6 +583,15 @@
             uusiVastausosa.setAttribute('id', 'uusinvastausosa');
             vastausosaElement.before(uusiVastausosa);
         })
-    }
+        root.style.setProperty("--eriApiVastaukset", topKysyttyjenMaara)
+        apiJarjestys.forEach((api) => {
+            if(!api[2]) {
+                const apiVastausDivit = document.querySelectorAll('.' + api[0] + 'osa')
+                apiVastausDivit.forEach((element) => {
+                    element.style.display = "none"
+                })
+            }
 
+        })
+    }
 </script>

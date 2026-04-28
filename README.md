@@ -1,4 +1,4 @@
-Käyttöliittymän pääsivut: hallinta.php, paasivu.php, chattitestaus.php linkkihakutestaus.php
+Käyttöliittymän pääsivut: hallinta.php, paasivu.php, linkkihakutestaus.php
 
 geminihaku.php ja huggingfacehaku.php ovat vanhoja, älä käytä niitä
 

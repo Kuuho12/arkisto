@@ -393,18 +393,7 @@
             })
             .then(response => response.json())
             .then(data => {
-                const h3 = document.createElement('h3');
-                if(data.status === 'success') {
-                    h3.textContent = 'Gemini vastaus:';
-                } else {
-                    h3.textContent = 'Gemini haku epäonnistui:';
-                }
-                const textarea = document.createElement('textarea');
-                textarea.className = 'vastaus-textarea gemini-vastaus';
-                textarea.readOnly = true;
-                textarea.textContent = data.message;
-                geminiVastausDiv.append(h3, textarea);
-                console.log("gemini error:", data.error)
+                tulostaVastaus("gemini", geminiVastausDiv, data.responseId, data.status, data.message, data.error)
             })
             .catch((error) => {
                 console.error("Error: ", error);
@@ -439,7 +428,8 @@
             })
             .then(response => response.json())
             .then(data => {
-                //openaiVastausDiv.style.width = "calc(" + (100/kysyttyjenMaara) + "% - 20px)";
+                tulostaVastaus("openai", openaiVastausDiv, data.responseId, data.status, data.message, data.error)
+                /*//openaiVastausDiv.style.width = "calc(" + (100/kysyttyjenMaara) + "% - 20px)";
                 const h3 = document.createElement('h3');
                 if(data.status === 'success') {
                     h3.textContent = 'OpenAI vastaus:';
@@ -452,7 +442,7 @@
                 textarea.textContent = data.message;
                 openaiVastausDiv.append(h3, textarea);
                 //openaiVastausDiv.innerHTML = `<h3>OpenAI vastaus:</h3><textarea class="vastaus-textarea" name="openai-vastaus" id="openai-vastaus" readonly>${data.message}</textarea>`; Ei toimi jostain hemmetin syystä
-                console.log("openai error:", data.error)
+                console.log("openai error: ", data.error)*/
             })
             .catch((error) => {
                 console.error("Error: ", error);
@@ -487,18 +477,7 @@
             })
             .then(response => response.json())
             .then(data => {
-                const h3 = document.createElement('h3');
-                if(data.status === 'success') {
-                    h3.textContent = 'Hugging Face vastaus:';
-                } else {
-                    h3.textContent = 'Hugging Face haku epäonnistui:';
-                }
-                const textarea = document.createElement('textarea');
-                textarea.className = 'vastaus-textarea huggingface-vastaus';
-                textarea.readOnly = true;
-                textarea.textContent = data.message;
-                huggingfaceVastausDiv.append(h3, textarea);
-                console.log("huggingface error:", data.error)
+                tulostaVastaus("huggingface", huggingfaceVastausDiv, data.responseId, data.status, data.message, data.error)
             })
             .catch((error) => {
                 console.error("Error: ", error);
@@ -511,6 +490,103 @@
             });
         }
     })
+    function tulostaVastaus(api, apiVastausDiv, responseId, status = true, response = "", arvosteluSelected = null, error = null) {
+        api = apiJarjestys.find((part) => {
+            return part[0] == api
+        })
+        const h3 = document.createElement('h3');
+        if(status === 'success' || status === true) {
+            h3.textContent = api[1] + ' vastaus:';
+        } else {
+            h3.textContent = api[1] + ' haku epäonnistui:';
+        }
+        const textarea = document.createElement('textarea');
+        textarea.className = 'vastaus-textarea ' + api[0] + '-vastaus';
+        textarea.readOnly = true;
+        textarea.textContent = response;
+        apiVastausDiv.append(h3, textarea);
+        const arvosteluDiv = document.createElement("div")
+        arvosteluDiv.classList.add("arvostelu")
+        const arvosteluSelect = document.createElement("select");
+        arvosteluSelect.id = "arvostelu-select"
+        const arvosteluLabel = document.createElement("label");
+        arvosteluLabel.htmlFor = "arvostelu-select"; arvosteluLabel.textContent = "Arvostele:"
+        const nothingOption = document.createElement("option");
+        nothingOption.value = ""; nothingOption.textContent = "";
+        const trueOption = document.createElement("option")
+        trueOption.value = "true"; trueOption.textContent = "Totta"
+        const falseOption = document.createElement("option")
+        falseOption.value = "false"; falseOption.textContent = "Epätosi"
+        const ohiOption = document.createElement("option")
+        ohiOption.value = "ohi"; ohiOption.textContent = "Ei vastaa kysymykseen"
+        switch(arvosteluSelected) {
+            case 1:
+                trueOption.selected = "true"
+                break;
+            case 0:
+                ohiOption.selected = "true"
+                break;
+            case -1:
+                falseOption.selected = "true"
+                break;
+            case null:
+            default:
+                nothingOption.selected = "true";
+        }
+        arvosteluSelect.append(nothingOption, trueOption, falseOption, ohiOption)
+        arvosteluSelect.addEventListener("change", (event) => {
+            const selectedValue = event.target.value;
+            let arvostelu = null
+            switch(selectedValue) {
+                case "true":
+                    arvostelu = 1
+                    break
+                case "false":
+                    arvostelu = -1
+                    break;
+                case "ohi":
+                    arvostelu = 0
+                    break
+                case "":
+                default:
+                    arvostelu = "null"
+                    break;
+            }
+            fetch('testisivu_handler.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 4,
+                    responseId: responseId,
+                    arvostelu: arvostelu
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status == "error") {
+                    console.log(data.message)
+                    alert(data.message)
+                } else {
+                    arvosteluSelect.style.backgroundColor = "rgb(0, 220, 0)"
+                    arvosteluSelect.style.color = "white"
+                    setTimeout(() => {
+                        arvosteluSelect.style.backgroundColor = "";
+                        arvosteluSelect.style.color = "black"
+                    }, 1500);
+                }
+            })
+            .catch((error) => {
+                console.error("Error: ", error);
+            })
+        })  
+        arvosteluDiv.append(arvosteluLabel, arvosteluSelect)
+        apiVastausDiv.appendChild(arvosteluDiv)
+        if(error != null) {
+            console.log(api[0] + " error: " + error)
+        }
+    }
     function kaikkiVastauksetSaapuneet(vastausosaElement) {
         suoritaHakuElement.disabled = false;
         vastausosaElement.setAttribute('id', '');
@@ -535,6 +611,9 @@
                 changedResponses[changedResponses.length] = [response.GroupCode, [response]]
             }
         })
+        changedResponses.sort((a, b) => {
+            return a[0] - b[0];
+        })
         
         const tyhjaResponse = Object.keys(changedResponses[0][1]).filter(key => changedResponses[0][1][key] === null)
         //let rootStyle = getComputedStyle(root)
@@ -544,33 +623,18 @@
             const vastausosaElement = document.querySelector('#uusinvastausosa');
             let kysyttyjenMaara = 0;
             apiJarjestys.forEach((api) => {
-                let onkoApi = false
+                const apiVastausDiv = document.createElement("div")
+                apiVastausDiv.classList.add('osa', api[0] + 'osa');
                 let response = tyhjaResponse
                 if(responseGroup[1].some((part, index) => {
                     if(part.Api == api[0]) {
                         kysyttyjenMaara++
-                        onkoApi = true;
                         api[2] = true;
                         response = part;
                         return true;
                     }
                 })) { 
-
-                }
-                const apiVastausDiv = document.createElement("div")
-                apiVastausDiv.classList.add('osa', api[0] + 'osa');
-                if (onkoApi) {
-                    const h3 = document.createElement('h3');
-                    //if(response.Status === 'success') {
-                        h3.textContent = api[1] + ' vastaus:';
-                    //} else {
-                    //    h3.textContent = api[1] + ' haku epäonnistui:';
-                    //}
-                    const textarea = document.createElement('textarea');
-                    textarea.className = 'vastaus-textarea ' + api[0] + '-vastaus';
-                    textarea.readOnly = true;
-                    textarea.textContent = response.Response;
-                    apiVastausDiv.append(h3, textarea);
+                    tulostaVastaus(api[0], apiVastausDiv, response.Id, true, response.Response, response.Review)
                 }
                 vastausosaElement.appendChild(apiVastausDiv);
             })
@@ -591,7 +655,19 @@
                     element.style.display = "none"
                 })
             }
-
+            switch(api[0]) {
+                case "gemini":
+                    onkoGemini = api[2]
+                    break;
+                case "openai":
+                    onkoOpenAI = api[2]
+                    break;
+                case "huggingface":
+                    onkoHugginFace = api[2]
+                    break;
+                default:
+                    alert("Apilta " + api + " puuttuu vastausdivin lisääminen.")
+            }
         })
     }
 </script>

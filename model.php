@@ -74,7 +74,12 @@ function tulostaTekoalytestaus($promptTeksti, $Gemini, $HuggingFace, $OpenAI, $G
     require_once 'newViews/tulostaTekoalytestaus.php';
     return ob_get_clean();
 }
-function tulostaPromptitListaus($prompts) {
+function tulostaPromptHeader($user, $otsikko) {
+    ob_start();
+    require_once 'newViews\tulostaPromptHeader.php';
+    return ob_get_clean();
+}
+function tulostaPromptitListaus($prompts, $listausOtsikko) {
     ob_start();
     require_once 'newViews/tulostaPromptitListaus.php';
     return ob_get_clean();
@@ -87,6 +92,11 @@ function tulostaPaasivuHeader($user) {
 function tulostaPaasivuKeskiosa() {
     ob_start();
     require_once 'newViews/tulostaPaasivuKeskiosa.php';
+    return ob_get_clean();
+}
+function tulostaKaikkienPromptitKeskiosa() {
+    ob_start();
+    require_once 'newViews\tulostaKaikkienPromptitKeskiosa.php';
     return ob_get_clean();
 }
 /**

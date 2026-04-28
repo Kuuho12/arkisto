@@ -1,10 +1,13 @@
 <?php // Nimi oli ennen testisivu.php
+header('Content-Type: text/html; charset=utf-8');
 session_start();
 if (empty($_SESSION['user'])) {
     header('Location: kirjautuminen.php');
     exit;
 }
+$otsikko = "Promptin käsittely";
 
+$user = $_SESSION['user'];
 $promptTeksti = "";
 $Gemini = false;
 $HuggingFace = false;
@@ -50,7 +53,7 @@ if($promptId !== null) {
         $result->free();
         if($sqlTulos) {
             $stmt = $conn->prepare(
-                "SELECT Created_at, Group_code, Response, Api, Model FROM Ai_responses WHERE Prompt_id = ?"
+                "SELECT Id, User, Created_at, Group_code, Response, Api, Model, Review FROM Ai_responses WHERE Prompt_id = ?"
             );
             $stmt->bind_param('i', $promptId);
             $sqlTulos = $stmt->execute();
@@ -62,11 +65,14 @@ if($promptId !== null) {
                 $responses = [];
                 while($row = $result->fetch_assoc()) {
                     $responses[] = [
+                        'Id' => $row['Id'],
+                        'User' => $row['User'],
                         'Created_at' => $row['Created_at'],
                         'GroupCode' => $row['Group_code'],
                         'Response' => $row['Response'],
                         'Api' => $row['Api'],
-                        'Model' => $row['Model']
+                        'Model' => $row['Model'],
+                        'Review' => $row['Review']
                     ];
                 }
             }
@@ -77,10 +83,12 @@ if($promptId !== null) {
 
 require_once 'model.php';
 $tekoalytestaus = tulostaTekoalytestaus($promptTeksti, $Gemini, $HuggingFace, $OpenAI, $Gemini_model, $HuggingFace_model, $OpenAI_model, $promptId, $responses, [$error ?? null, $error2 ?? null]);
+$promptheader = tulostaPromptHeader($user, $otsikko);
 
 $dom = new DOMDocument();
 @$html_file = file_get_contents('template\testisivutemplate.html');
-$replace_strings = ['[TEKOALYTESTAUS]'];
-$html_file = str_replace($replace_strings, [$tekoalytestaus], $html_file);
-@$dom->loadHTML($html_file);
-echo $dom->saveHTML();
+$replace_strings = ['[TEKOALYTESTAUS]', '[PROMPTHEADER]'];
+$html_file = str_replace($replace_strings, [$tekoalytestaus, $promptheader], $html_file);
+/*@$dom->loadHTML($html_file); // Aiheutti ä- ja ö-ongelmia
+echo $dom->saveHTML();*/
+echo $html_file;

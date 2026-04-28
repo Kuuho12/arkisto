@@ -1,11 +1,12 @@
 <?php
 session_start();
-$user = $_SESSION['user'] ?? null;
-if ($user === null) {
+if (empty($_SESSION['user'])) {
     header('Location: kirjautuminen.php');
     exit;
 }
+$otsikko = "Kaikkien promptit";
 
+$user = $_SESSION['user'];
 $tietokantaError = null;
 $phpmyadmin_username = "tekoalytestaus";
 $phpmyadmin_password = getenv('PHPMYADMIN_PASSWORD');
@@ -20,9 +21,8 @@ if ($conn->connect_error) {
 }
 
 $stmt = $conn->prepare(
-    "SELECT Id, Created_at, Prompt, Gemini, Hugging_Face, OpenAI, Gemini_model, Hugging_Face_model, OpenAI_model FROM Prompts WHERE User = ?"
+    "SELECT Id, Created_at, Prompt, Gemini, Hugging_Face, OpenAI, Gemini_model, Hugging_Face_model, OpenAI_model FROM Prompts"
 );
-$stmt->bind_param('s', $_SESSION['user']);
 $sqlTulos = $stmt->execute();
 if (!$sqlTulos) {
     $tietokantaError = 'Virhe tietokantahauissa: ' . $conn->error;
@@ -47,13 +47,14 @@ usort($prompts, function($a, $b) {
 });
 
 require_once 'model.php';
-$paasivuHeader = tulostaPaasivuHeader($user);
-$paasivuKeskiosa = tulostaPaasivuKeskiosa();
-$promptitListaus = tulostaPromptitListaus($prompts, "Promptiesi listaus:");
+$header = tulostaPromptHeader($user, $otsikko);
+$kaikkienpromptitkeskiosa = tulostaKaikkienPromptitKeskiosa();
+$promptitListaus = tulostaPromptitListaus($prompts, "Kaikkien promptien listaus:");
 
 $dom = new DOMDocument();
-@$html_file = file_get_contents('template\paasivutemplate.html');
-$replace_strings = ['[PAASIVUHEADER]', '[PAASIVUKESKIOSA]', '[PROMPTITLISTAUS]'];
-$html_file = str_replace($replace_strings, [$paasivuHeader, $paasivuKeskiosa, $promptitListaus], $html_file);
-@$dom->loadHTML($html_file);
-echo $dom->saveHTML();
+@$html_file = file_get_contents('template\kaikkienpromptittemplate.html');
+$replace_strings = ['[KAIKKIENPROMPTITHEADER]', '[KAIKKIENPROMPTITKESKIOSA]', '[PROMPTITLISTAUS]'];
+$html_file = str_replace($replace_strings, [$header, $kaikkienpromptitkeskiosa, $promptitListaus], $html_file);
+echo $html_file;
+
+?>

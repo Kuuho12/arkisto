@@ -1,4 +1,3 @@
 <div id="paasivu-keskiosa">
     <a href="prompt.php"><h3>Siirry tekemään uusi prompt</h3></a>
-    <a href="kaikkienpromptit.php"><h3>Siirry katsomaan kaikkien prompteja</h3></a>
 </div>

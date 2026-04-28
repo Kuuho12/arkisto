@@ -1,7 +1,7 @@
 
 <div id="promptit-listaus">
     <div id="promptit-header">
-        <h2>Promptiesi listaus:</h2>
+        <h2><?php echo $listausOtsikko ?></h2>
         <div id="promptit-header2">
             <h2 class="prompt-text">Promptit</h2>
             <div id="promptit-header3">

@@ -1,8 +1,37 @@
-CREATE TABLE artikkelit (
-    id int NOT NULL AUTO_INCREMENT,
-    aika datetime NOT NULL,
-    otsikko varchar(255),
-    sisalto text,
-    kirjoittaja varchar(255),
-    PRIMARY KEY (id)
-);
+REATE TABLE IF NOT EXISTS `artikkelit3` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `aika` datetime NOT NULL,
+  `otsikko` varchar(255) DEFAULT NULL,
+  `sisalto` text,
+  `kirjoittaja` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM AUTO_INCREMENT=1 DEFAULT CHARSET=latin1;
+
+CREATE TABLE IF NOT EXISTS `prompts` (
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `User` varchar(50) NOT NULL,
+  `Created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Last_modified` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `Prompt` mediumtext,
+  `Gemini` tinyint(1) NOT NULL DEFAULT '0',
+  `Hugging_Face` tinyint(1) NOT NULL DEFAULT '0',
+  `OpenAI` tinyint(1) NOT NULL DEFAULT '0',
+  `Gemini_model` varchar(255) DEFAULT NULL,
+  `Hugging_Face_model` varchar(255) DEFAULT NULL,
+  `OpenAI_model` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`Id`)
+) ENGINE=MyISAM AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `ai_responses` (
+  `Id` int NOT NULL AUTO_INCREMENT,
+  `User` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `Created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Prompt_id` int NOT NULL,
+  `Group_code` decimal(60,17) NOT NULL,
+  `Prompt` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+  `Response` mediumtext,
+  `Api` varchar(50) DEFAULT NULL,
+  `Model` varchar(255) DEFAULT NULL,
+  `Review` tinyint(1) DEFAULT NULL,
+  PRIMARY KEY (`Id`)
+) ENGINE=MyISAM AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

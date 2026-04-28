@@ -29,7 +29,7 @@ $OpenAI_model = $data['OpenAI_model'] ?? "";
 
 $promptId = $data['promptId'] ?? null;
 
-if(!$Gemini && !$HuggingFace && !$OpenAI && $action !== 3) {
+if(!$Gemini && !$HuggingFace && !$OpenAI && $action !== 3 && $action !== 4) {
     echo json_encode(['status' => 'error', 'message' => 'Vähintään yksi API-valinta on pakollinen.']);
     exit();
 }
@@ -138,7 +138,8 @@ if($action === 0) { // Tallennetaan prompt tietokantaan
     if (!$sqlTulos) {
         $error = 'Virhe tietojen tallentamisessa: ' . $conn->error;
     }
-    echo json_encode(["status" => $tulos[0] ? 'success' : 'error', "message" => $tulos[1], "error" => $error ?? null]);
+    $responseId = $stmt->insert_id;
+    echo json_encode(["status" => $tulos[0] ? 'success' : 'error', "message" => $tulos[1], "responseId" => $responseId, "error" => $error ?? null]);
 } else if ($action === 2) { // Muokataan (käyttäjän omaa) promptia
     $promptId = $data['promptId'] ?? null;
     if($promptId === null) {
@@ -183,6 +184,34 @@ if($action === 0) { // Tallennetaan prompt tietokantaan
         exit();
     }
     echo json_encode(['status' => 'success', 'message' => 'Prompti ja sen vastaukset onnistuneesti poistettu']);
+} else if ($action === 4) { // Muutetaan arvostelua
+    $arvostelu = $data['arvostelu'] ?? false;
+    $responseId = $data['responseId'] ?? false;
+    if($arvostelu === false) {
+        echo json_encode(["status" => 'error', "message" => 'Arvostelua ei määritelty']);
+        exit();
+    }
+    if($responseId === false) {
+        echo json_encode(["status" => 'error', "message" => 'ResponseId:tä ei määritelty']);
+        exit();
+    }
+    if($arvostelu == "null") {
+        $arvostelu = null;
+    }
+    $stmt = $conn->prepare(
+        "UPDATE Ai_responses SET Review = ? WHERE Id = ?"
+    );
+    $stmt->bind_param('ii', $arvostelu, $responseId);
+    $sqlTulos = $stmt->execute();
+    if (!$sqlTulos) {
+        $error = 'Virhe arvostelun tallentamisessa: ' . $conn->error;
+        echo json_encode(["status" => 'error', "message" => $error]);
+        exit();
+    } else if ($stmt->affected_rows === 0) {
+        echo json_encode(["status" => 'error', "message" => 'Promptia ei löytynyt tai arvostelun arvo oli sama']);
+        exit();
+    }
+    echo json_encode(['status' => 'success', 'message' => 'Arvostelu tallennettu']);
 } else {
     echo json_encode(['status' => 'error', 'message' => 'Tuntematon toiminto.']);
 }
